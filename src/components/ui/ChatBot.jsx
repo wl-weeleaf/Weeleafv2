@@ -16,7 +16,7 @@ Keep responses warm, concise (2-4 sentences), and inspiring. Do not use emoji.`
 
 const INITIAL_MESSAGE = {
   role: 'assistant',
-  content: "Hi! I'm Leafy, your WeeLeaf guide. Ask me anything about our sustainable community, hemp products, or how to get involved!",
+  content: 'Hej. Jeg er Leafy, og jeg svarer gennem GDPR Chat. Skriv bare.',
 }
 
 export default function ChatBot() {
@@ -100,7 +100,7 @@ export default function ChatBot() {
       <div className="flex items-center justify-between px-4 py-3 border-b border-green-500/20">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-white text-sm wl-display">Leafy Assistant</span>
+          <span className="text-white text-sm wl-display">Leafy · GDPR Chat</span>
         </div>
         <button
           onClick={toggleChat}

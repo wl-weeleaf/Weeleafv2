@@ -33,7 +33,7 @@ const useStore = create((set, get) => ({
   isModalOpen: false,
   /** 'visible' | 'hidden' — drives scene fade without unmounting WebGL */
   sceneRevealPhase: 'visible',
-  isChatOpen: false,
+  isChatOpen: true,
   isAdminOpen: false,
   leafyPos: { x: 0, y: 0 },
   apiReady: false,

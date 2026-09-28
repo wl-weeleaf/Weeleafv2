@@ -38,8 +38,9 @@ export default function LeafyAssistant() {
       className="fixed bottom-5 right-5 z-40 cursor-pointer select-none"
       onMouseEnter={() => setCornerHovered(true)}
       onMouseLeave={() => setCornerHovered(false)}
+      onClick={handleContextMenu}
       onContextMenu={handleContextMenu}
-      title="Right-click to chat with Leafy"
+      title="Klik for at tale med Leafy"
     >
       <div
         className="transition-transform duration-300"
@@ -61,7 +62,7 @@ export default function LeafyAssistant() {
             color: '#86efac',
           }}
         >
-          Right-click to chat with Leafy
+          Klik for at tale med Leafy
         </div>
       )}
     </div>

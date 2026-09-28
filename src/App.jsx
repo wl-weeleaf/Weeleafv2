@@ -11,6 +11,8 @@ import { preloadCoinImages } from './utils/textureCache'
 
 const Scene = lazy(() => import('./components/scene/Scene'))
 const Modal = lazy(() => import('./components/ui/Modal'))
+const LeafyAssistant = lazy(() => import('./components/ui/LeafyAssistant'))
+const ChatBot = lazy(() => import('./components/ui/ChatBot'))
 
 function LoadingScreen() {
   return (
@@ -73,6 +75,8 @@ export default function App() {
       <LeafyMenu />
       <Suspense fallback={null}>
         <Modal />
+        <LeafyAssistant />
+        <ChatBot />
       </Suspense>
     </div>
   )
