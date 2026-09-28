@@ -50,59 +50,37 @@ export function createLeafyGeometry(front = true) {
   return g
 }
 
-export async function createLeafy(textureUrl = '/leafy/npc-base.png', backUrl = '/leafy/back.png') {
-  const loader = new THREE.TextureLoader()
-  const loaded = await Promise.allSettled([loader.loadAsync(textureUrl), loader.loadAsync(backUrl)])
-  if (loaded.some((r) => r.status === 'rejected')) {
-    loaded.forEach((r) => {
-      if (r.status === 'fulfilled') r.value.dispose()
-    })
-    throw new Error('Leafy textures could not load')
-  }
-  const [texture, backTexture] = loaded.map((r) => r.value)
-  for (const t of [texture, backTexture]) {
-    t.colorSpace = THREE.SRGBColorSpace
-    t.anisotropy = 4
-  }
+export function createLeafy() {
   const root = new THREE.Group()
   root.name = 'Leafy'
   const frontMaterial = new THREE.MeshStandardMaterial({
-    map: texture,
-    roughness: 0.85,
-    emissiveMap: texture,
-    emissive: 0xffffff,
-    emissiveIntensity: 0.18,
+    color: '#3f9a2c',
+    roughness: 0.72,
+    metalness: 0.04,
+    emissive: '#163d12',
+    emissiveIntensity: 0.22,
   })
   const backMaterial = new THREE.MeshStandardMaterial({
-    map: backTexture,
-    roughness: 0.85,
-    emissiveMap: backTexture,
-    emissive: 0xffffff,
-    emissiveIntensity: 0.18,
+    color: '#2c6b1e',
+    roughness: 0.82,
+    metalness: 0.02,
+    emissive: '#10240e',
+    emissiveIntensity: 0.12,
   })
   const front = new THREE.Mesh(createLeafyGeometry(true), frontMaterial)
   front.name = 'Leafy_front'
-  const backGeometry = createLeafyGeometry(false)
-  const backUV = backGeometry.getAttribute('uv')
-  for (let i = 0; i < backUV.count; i++) backUV.setX(i, 1 - backUV.getX(i))
-  const back = new THREE.Mesh(backGeometry, backMaterial)
+  const back = new THREE.Mesh(createLeafyGeometry(false), backMaterial)
   back.name = 'Leafy_back'
   root.add(front, back)
   return root
 }
 
 export function disposeLeafy(root) {
-  const mats = new Set()
-  const tex = new Set()
   root.traverse((o) => {
-    if (o instanceof THREE.Mesh) {
+    if (o.isMesh) {
       o.geometry.dispose()
-      for (const m of Array.isArray(o.material) ? o.material : [o.material]) mats.add(m)
+      const mats = Array.isArray(o.material) ? o.material : [o.material]
+      mats.forEach((m) => m.dispose())
     }
   })
-  for (const m of mats) {
-    for (const v of Object.values(m)) if (v instanceof THREE.Texture) tex.add(v)
-    m.dispose()
-  }
-  tex.forEach((t) => t.dispose())
 }
