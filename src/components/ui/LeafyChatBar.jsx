@@ -49,7 +49,10 @@ export default function LeafyChatBar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: history }),
       })
-      if (!res.ok) throw Error(((await res.json()) as never) || 'Forbindelsen kunne ikke svare.')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw Error(data.error || 'Forbindelsen kunne ikke svare.')
+      }
       if (!res.body) throw Error('Svaret mangler.')
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
