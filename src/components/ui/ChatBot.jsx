@@ -24,8 +24,6 @@ export default function ChatBot() {
   const [messages, setMessages] = useState([INITIAL_MESSAGE])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [apiKey, setApiKey] = useState('')
-  const [showKeyInput, setShowKeyInput] = useState(false)
 
   const containerRef = useRef()
   const bottomRef = useRef()
@@ -55,57 +53,34 @@ export default function ChatBot() {
     setInput('')
     setIsLoading(true)
 
-    if (!apiKey) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'To enable AI responses, please add an OpenAI API key using the API button above. Your key stays in memory only — never stored.',
-        },
-      ])
-      setIsLoading(false)
-      return
-    }
-
     try {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      const history = [...messages.slice(-6), userMsg]
+      const res = await fetch('/api/leafy-chat.php', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            ...messages.slice(-6),
-            userMsg,
-          ],
-          max_tokens: 280,
-          temperature: 0.72,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: history }),
       })
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
-        throw new Error(errData?.error?.message || `HTTP ${res.status}`)
+        throw new Error(errData?.error?.message || errData?.error || `HTTP ${res.status}`)
       }
 
       const data = await res.json()
-      const reply = data.choices?.[0]?.message?.content ?? 'Sorry, I could not process that.'
+      const reply = data.choices?.[0]?.message?.content ?? 'Jeg kunne ikke svare lige nu.'
       setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: `Something went wrong: ${err.message}. Please check your API key and try again.`,
+          content: 'Jeg kunne ikke nå forbindelsen. Prøv igen om et øjeblik.',
         },
       ])
     } finally {
       setIsLoading(false)
     }
-  }, [input, isLoading, apiKey, messages])
+  }, [input, isLoading, messages])
 
   if (!isChatOpen) return null
 
@@ -127,40 +102,13 @@ export default function ChatBot() {
           <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
           <span className="text-white text-sm wl-display">Leafy Assistant</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setShowKeyInput((v) => !v)}
-            className="text-white/40 hover:text-white/80 transition-colors px-1 py-0.5 rounded text-xs"
-            title="OpenAI API-nøgle"
-          >
-            API
-          </button>
-          <button
-            onClick={toggleChat}
-            className="text-white/40 hover:text-white transition-colors text-xl leading-none w-7 h-7 flex items-center justify-center rounded hover:bg-white/10"
-          >
-            ×
-          </button>
-        </div>
+        <button
+          onClick={toggleChat}
+          className="text-white/40 hover:text-white transition-colors text-xl leading-none w-7 h-7 flex items-center justify-center rounded hover:bg-white/10"
+        >
+          ×
+        </button>
       </div>
-
-      {/* API key input (collapsible) */}
-      {showKeyInput && (
-        <div className="px-3 py-2.5 border-b border-green-500/15 space-y-1.5">
-          <input
-            type="password"
-            placeholder="sk-... (OpenAI API key)"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && setShowKeyInput(false)}
-            className="w-full text-xs rounded-lg px-3 py-2 text-white/80 placeholder-white/30 outline-none focus:border-green-500/40 border"
-            style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}
-          />
-          <p className="text-white/30 text-[10px] leading-tight">
-            Key is held in memory only — never sent anywhere except OpenAI.
-          </p>
-        </div>
-      )}
 
       {/* Messages */}
       <div className="h-60 overflow-y-auto px-3 py-3 space-y-2.5">

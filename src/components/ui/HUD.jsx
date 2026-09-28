@@ -69,6 +69,7 @@ function StatsBar({ visible }) {
 export default function HUD() {
   const { isModalOpen, activeCoin, setActiveCoin, coins } = useStore()
   const chatOpen = useLeafyUi((s) => s.chatOpen)
+  const openChat = useLeafyUi((s) => s.openChat)
 
   return (
     <>
@@ -97,6 +98,16 @@ export default function HUD() {
       )}
 
       {chatOpen ? <LeafyChatBar /> : <StatsBar visible={!isModalOpen} />}
+      {!chatOpen && !isModalOpen && (
+        <button
+          type="button"
+          onClick={openChat}
+          className="fixed bottom-6 right-6 z-40 rounded-full px-5 py-3 text-sm font-semibold"
+          style={{ background: '#fffdf7', color: '#163821', boxShadow: '0 5px 18px rgba(88,72,28,0.18)' }}
+        >
+          Tal med Leafy
+        </button>
+      )}
     </>
   )
 }
