@@ -52,8 +52,8 @@ export default function LeafyChatBar() {
       setMessages([...history, { role: 'assistant', content: answer }])
     } catch (err) {
       if (generation === seq.current && err.name !== 'AbortError') {
-        setError(err.message || 'Grok kunne ikke svare.')
-        setBubble('Vi mangler forbindelse til Grok. Tjek nøglen under Leafys menu.')
+        setError(err.message || 'Leafy kunne ikke svare.')
+        setBubble('Jeg kunne ikke nå forbindelsen. Prøv igen om et øjeblik.')
       }
     } finally {
       if (generation === seq.current) setPending(false)

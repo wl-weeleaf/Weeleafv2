@@ -1,39 +1,19 @@
 import { ChatStreamParser } from './protocol'
 
-const PERSONA =
-  'Du er Leafy, WeeLeafs venlige guide. Svar kort og varmt på dansk, medmindre brugeren skriver engelsk. Du kender Hemptation, WL Hive, shoppen, donationer og community.'
-
-export function getGrokKey() {
-  return import.meta.env.VITE_XAI_API_KEY || localStorage.getItem('leafy_xai_key') || ''
-}
-
-export function setGrokKey(key) {
-  if (key) localStorage.setItem('leafy_xai_key', key)
-  else localStorage.removeItem('leafy_xai_key')
-}
-
 export async function streamGrok({ messages, signal, onDelta }) {
-  const key = getGrokKey()
-  if (!key) throw new Error('Grok-nøgle mangler. Dobbeltklik Leafy og indsæt din xAI API-nøgle.')
-
-  const res = await fetch('/xai/chat/completions', {
+  const res = await fetch('/api/leafy-chat.php', {
     method: 'POST',
     signal,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${key}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: import.meta.env.VITE_XAI_MODEL || 'grok-4',
       stream: true,
-      max_tokens: 800,
-      messages: [{ role: 'system', content: PERSONA }, ...messages],
+      messages,
     }),
   })
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
-    throw new Error(data.error?.message || data.error || `Grok svarede ${res.status}`)
+    throw new Error(data.error?.message || data.error || `Leafy svarede ${res.status}`)
   }
   if (!res.body) throw new Error('Svaret mangler.')
 
