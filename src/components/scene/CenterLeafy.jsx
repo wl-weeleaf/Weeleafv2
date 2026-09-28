@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { LayeredLeafyNPC } from '../leafy/LayeredLeafyNPC'
 import useLeafyUi from '../../store/leafyUi'
+import { ORBIT_HEIGHT } from '../../data/coinData'
 
 export default function CenterLeafy() {
   const { size, camera } = useThree()
@@ -19,7 +20,6 @@ export default function CenterLeafy() {
   const chatOpen = useLeafyUi((s) => s.chatOpen)
   const openChat = useLeafyUi((s) => s.openChat)
   const openMenu = useLeafyUi((s) => s.openMenu)
-  const baseY = 0.35 + 3.4 * scale * 0.25
 
   useEffect(() => {
     let cancelled = false
@@ -68,7 +68,7 @@ export default function CenterLeafy() {
   if (!ready || !npcRef.current) return null
 
   return (
-    <group ref={holder} position={[0, baseY, 0]} scale={scale}>
+    <group ref={holder} position={[0, ORBIT_HEIGHT + 0.72, 0]} scale={scale}>
       <primitive object={npcRef.current.model} />
       <mesh position={[0, 0, 0.55]} onPointerDown={onPointerDown}>
         <circleGeometry args={[1.35, 24]} />
