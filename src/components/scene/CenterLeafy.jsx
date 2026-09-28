@@ -1,76 +1,123 @@
-import React, { useEffect, useMemo, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { useGLTF, useTexture } from '@react-three/drei'
+import { Billboard, useTexture } from '@react-three/drei'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as THREE from 'three'
 
-const HIDDEN = new Set([
-  'Leafy_floating_hands',
-  'Left_hand',
-  'Right_hand',
-  'Image_hand',
-  'Hand_rest_front',
-  'Hand_rest_back',
-  'Leafy_hemp_shoes',
-  'Left_hemp_shoe',
-  'Right_hemp_shoe',
-])
+const GLB_URL = '/leafy-npc.glb'
+const PNG_URL = '/leafy-center.png'
+const LEAFY_ASPECT = 553 / 705
 
 function shouldHide(name) {
   if (!name) return false
-  if (HIDDEN.has(name)) return true
-  return /hand|shoe|foot|hemp/i.test(name)
+  return /hand|shoe|foot|hemp|ivory_sole|green_collar|green_strap/i.test(name)
+}
+
+function prepareModel(scene) {
+  const root = scene.clone(true)
+
+  root.traverse((obj) => {
+    obj.raycast = () => {}
+    if (shouldHide(obj.name)) {
+      obj.visible = false
+      return
+    }
+    if (obj.isMesh && obj.material) {
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+      mats.forEach((m) => {
+        m.side = THREE.DoubleSide
+        m.toneMapped = false
+        if (obj.name === 'Mouth_sprite') {
+          m.transparent = true
+          m.depthWrite = false
+          // Gør den bagte mund-sprite lidt højere, så den læses som åben.
+          obj.scale.y = Math.max(obj.scale.y, 1.35)
+          obj.visible = true
+        }
+      })
+    }
+  })
+
+  const box = new THREE.Box3()
+  root.updateMatrixWorld(true)
+  root.traverse((obj) => {
+    if (obj.isMesh && obj.visible) box.expandByObject(obj)
+  })
+  if (!box.isEmpty()) {
+    const center = box.getCenter(new THREE.Vector3())
+    root.position.x -= center.x
+    root.position.y -= center.y
+    root.position.z -= center.z
+  }
+  return root
+}
+
+function PngFallback() {
+  const { size, gl } = useThree()
+  const mobile = size.width < 768
+  const texture = useTexture(PNG_URL)
+
+  useEffect(() => {
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy())
+    texture.needsUpdate = true
+  }, [texture, gl])
+
+  const height = mobile ? 6.5 : 7.4
+  const width = height * LEAFY_ASPECT
+
+  return (
+    <Billboard follow position={[0, 0.15, 0]}>
+      <mesh raycast={() => null}>
+        <planeGeometry args={[width, height]} />
+        <meshBasicMaterial map={texture} transparent alphaTest={0.08} depthWrite toneMapped={false} />
+      </mesh>
+    </Billboard>
+  )
 }
 
 export default function CenterLeafy() {
   const { size } = useThree()
   const mobile = size.width < 768
   const group = useRef()
-  const { scene } = useGLTF('/leafy-npc.glb')
-  const mouthAtlas = useTexture('/leafy/mouths/atlas.png')
-
-  const model = useMemo(() => {
-    const root = scene.clone(true)
-    root.traverse((obj) => {
-      obj.raycast = () => {}
-      if (shouldHide(obj.name)) obj.visible = false
-    })
-    return root
-  }, [scene])
+  const [model, setModel] = useState(null)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    // Viseme AA = mest åben mund i 4x2-atlaset (index 2).
-    mouthAtlas.colorSpace = THREE.SRGBColorSpace
-    mouthAtlas.wrapS = THREE.ClampToEdgeWrapping
-    mouthAtlas.wrapT = THREE.ClampToEdgeWrapping
-    mouthAtlas.repeat.set(0.25, 0.5)
-    mouthAtlas.offset.set(0.5, 0.5)
-    mouthAtlas.needsUpdate = true
-
-    model.traverse((obj) => {
-      if (obj.name !== 'Mouth_sprite' || !obj.material) return
-      obj.visible = true
-      obj.material = obj.material.clone()
-      obj.material.map = mouthAtlas
-      obj.material.transparent = true
-      obj.material.depthWrite = false
-      obj.material.needsUpdate = true
-    })
-  }, [model, mouthAtlas])
+    let cancelled = false
+    const loader = new GLTFLoader()
+    loader.load(
+      GLB_URL,
+      (gltf) => {
+        if (cancelled) return
+        setModel(prepareModel(gltf.scene))
+      },
+      undefined,
+      (err) => {
+        console.warn('[CenterLeafy] GLB kunne ikke loades:', err)
+        if (!cancelled) setFailed(true)
+      }
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useFrame(({ clock }) => {
     if (!group.current) return
     const t = clock.elapsedTime
-    group.current.position.y = 0.2 + Math.sin(t * 1.25) * 0.07
-    group.current.rotation.y = Math.sin(t * 0.35) * 0.06
+    group.current.position.y = 0.35 + Math.sin(t * 1.25) * 0.07
+    group.current.rotation.y = Math.sin(t * 0.35) * 0.08
   })
 
-  const scale = mobile ? 2.1 : 2.5
+  if (failed) return <PngFallback />
+  if (!model) return null
+
+  const scale = mobile ? 3.2 : 3.8
 
   return (
-    <group ref={group} position={[0, 0.2, 0]} scale={scale}>
+    <group ref={group} position={[0, 0.35, 0]} scale={scale}>
       <primitive object={model} />
     </group>
   )
 }
-
-useGLTF.preload('/leafy-npc.glb')
