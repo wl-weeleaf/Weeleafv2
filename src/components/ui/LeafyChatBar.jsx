@@ -1,15 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import useLeafyUi from '../../store/leafyUi'
-
-const SYSTEM = `You are Leafy, WeeLeaf guide. Short warm answers in Danish unless the user writes English.`
+import { askLeafy } from '../leafy/leafyBrain'
+import './leafyChat.css'
 
 export default function LeafyChatBar() {
   const chatOpen = useLeafyUi((s) => s.chatOpen)
   const closeChat = useLeafyUi((s) => s.closeChat)
   const [input, setInput] = useState('')
   const [pending, setPending] = useState(false)
+  const [listening, setListening] = useState(false)
   const [bubble, setBubble] = useState('Hvad skal vi finde på i dag?')
+  const [history, setHistory] = useState([])
   const inputRef = useRef()
+  const recRef = useRef(null)
 
   useEffect(() => {
     if (chatOpen) inputRef.current?.focus()
@@ -23,64 +26,68 @@ export default function LeafyChatBar() {
       setInput('')
       setPending(true)
       setBubble('Hmm…')
-      try {
-        const res = await fetch('/api/livi/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [
-              { role: 'system', content: SYSTEM },
-              { role: 'user', content: text },
-            ],
-          }),
-        })
-        if (!res.ok) throw new Error('offline')
-        const data = await res.json().catch(() => ({}))
-        const answer =
-          data.reply || data.content || data.choices?.[0]?.message?.content || ''
-        setBubble(answer || 'Jeg er her. AI er ikke tilkoblet endnu — prøv igen senere.')
-      } catch {
-        setBubble('Jeg hørte dig. AI er endnu ikke tilkoblet, men chatten er klar.')
-      } finally {
-        setPending(false)
-      }
+      const nextHistory = [...history, { role: 'user', content: text }]
+      const answer = await askLeafy(text, nextHistory)
+      setHistory([...nextHistory, { role: 'assistant', content: answer }])
+      setBubble(answer)
+      setPending(false)
     },
-    [input, pending]
+    [input, pending, history]
   )
+
+  const microphone = () => {
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!Speech) {
+      setBubble('Din browser understøtter ikke diktering endnu.')
+      return
+    }
+    if (listening && recRef.current) {
+      recRef.current.stop()
+      setListening(false)
+      return
+    }
+    const rec = new Speech()
+    rec.lang = 'da-DK'
+    rec.onresult = (ev) => {
+      const said = ev.results[0]?.[0]?.transcript || ''
+      setInput(said)
+      setListening(false)
+    }
+    rec.onerror = () => setListening(false)
+    rec.onend = () => setListening(false)
+    recRef.current = rec
+    setListening(true)
+    rec.start()
+  }
 
   if (!chatOpen) return null
 
   return (
-    <div className="fixed bottom-8 left-1/2 z-40 w-[min(640px,calc(100vw-24px))] -translate-x-1/2">
-      <div className="mb-2 text-center text-sm text-emerald-200/90">{bubble}</div>
-      <form
-        onSubmit={send}
-        className="flex items-center gap-2 rounded-full px-3 py-2"
-        style={{
-          background: 'rgba(20,10,6,0.72)',
-          border: '1px solid rgba(200,140,80,0.28)',
-          backdropFilter: 'blur(12px)',
-        }}
-      >
-        <input
-          ref={inputRef}
-          aria-label="Skriv til Leafy"
-          placeholder="Skriv til Leafy…"
-          value={input}
-          maxLength={6000}
-          onChange={(e) => setInput(e.target.value)}
-          className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-white/35"
-        />
-        <button
-          type="submit"
-          disabled={!input.trim() || pending}
-          className="rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-40"
-          style={{ background: 'rgba(74,222,128,0.22)', color: '#bbf7d0', border: '1px solid rgba(74,222,128,0.35)' }}
-        >
-          Send
+    <div className="wl-room-bottom">
+      <div className="wl-room-bubble" aria-live="polite">
+        {bubble}
+      </div>
+      <form className="wl-room-composer" onSubmit={send}>
+        <div className="wl-room-input">
+          <input
+            ref={inputRef}
+            aria-label="Skriv til Leafy"
+            placeholder="Skriv til Leafy…"
+            value={input}
+            maxLength={6000}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button type="submit" disabled={!input.trim() || pending} aria-label="Send besked">
+            ↑
+          </button>
+        </div>
+        <button className="wl-room-talk" type="button" onClick={microphone} aria-pressed={listening}>
+          <i>{listening ? '■' : '●'}</i>
+          <span>{listening ? 'Stop diktering' : 'Tal med Leafy'}</span>
         </button>
-        <button type="button" onClick={closeChat} className="px-2 text-white/45 hover:text-white">
-          ×
+        <button className="wl-room-talk" type="button" onClick={closeChat}>
+          <i>×</i>
+          <span>Luk</span>
         </button>
       </form>
     </div>

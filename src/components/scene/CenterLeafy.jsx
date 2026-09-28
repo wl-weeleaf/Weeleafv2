@@ -29,16 +29,8 @@ function loadFirstGltf(urls) {
   const loader = new GLTFLoader()
   return new Promise((resolve, reject) => {
     const next = (i) => {
-      if (i >= urls.length) {
-        reject(new Error('Ingen Leafy-GLB fundet'))
-        return
-      }
-      loader.load(
-        urls[i],
-        (gltf) => resolve(gltf),
-        undefined,
-        () => next(i + 1)
-      )
+      if (i >= urls.length) return reject(new Error('Ingen Leafy-GLB fundet'))
+      loader.load(urls[i], resolve, undefined, () => next(i + 1))
     }
     next(0)
   })
@@ -50,11 +42,9 @@ export default function CenterLeafy() {
   const scale = (mobile ? 3.2 : 3.8) * 0.25
   const group = useRef()
   const clickTimer = useRef(0)
-  const gaze = useRef(new THREE.Vector2())
   const head = useRef(new THREE.Vector2())
   const [model, setModel] = useState(null)
   const follow = useLeafyUi((s) => s.follow)
-  const blink = useLeafyUi((s) => s.blink)
   const motion = useLeafyUi((s) => s.motion)
   const openChat = useLeafyUi((s) => s.openChat)
   const openMenu = useLeafyUi((s) => s.openMenu)
@@ -63,8 +53,7 @@ export default function CenterLeafy() {
     let cancelled = false
     loadFirstGltf(GLB_CANDIDATES)
       .then((gltf) => {
-        if (cancelled) return
-        setModel(hideExtras(gltf.scene.clone(true)))
+        if (!cancelled) setModel(hideExtras(gltf.scene.clone(true)))
       })
       .catch((err) => console.warn('[CenterLeafy]', err))
     return () => {
@@ -78,30 +67,17 @@ export default function CenterLeafy() {
     const t = state.clock.elapsedTime
     const active = follow && (Math.abs(state.pointer.x) > 0.02 || Math.abs(state.pointer.y) > 0.02)
     const desired = active
-      ? new THREE.Vector2(state.pointer.x, state.pointer.y)
-      : new THREE.Vector2(Math.sin(t * 0.47) * 0.17, Math.sin(t * 0.31) * 0.09)
-    gaze.current.lerp(desired, 1 - Math.exp(-dt * 12))
-    head.current.lerp(desired, 1 - Math.exp(-dt * 3))
+      ? new THREE.Vector2(state.pointer.x * 0.35, state.pointer.y * 0.2)
+      : new THREE.Vector2(Math.sin(t * 0.35) * 0.08, Math.sin(t * 0.22) * 0.04)
+    head.current.lerp(desired, 1 - Math.exp(-dt * 4))
 
     const g = group.current
-    g.rotation.y = head.current.x * 0.22
-    g.rotation.x = -head.current.y * 0.1
-    g.rotation.z = motion === 'still' ? 0 : Math.sin(t * 0.8) * 0.015
+    g.rotation.y = head.current.x
+    g.rotation.x = -head.current.y
+    g.rotation.z = motion === 'still' ? 0 : Math.sin(t * 0.7) * 0.012
     if (motion === 'hop') g.position.y = 0.35 + Math.max(0, Math.sin(t * 6)) * 0.17
     else if (motion === 'still') g.position.y = 0.35
-    else g.position.y = 0.35 + Math.sin(t * 1.35) * 0.035
-
-    const eyes = []
-    g.traverse((o) => {
-      if (o.name === 'Eyes_sprite') eyes.push(o)
-    })
-    const open = blink ? 0.82 + Math.sin(t * 0.4) * 0.02 : 1
-    const blinkNow = blink && Math.sin(t * 3.1) > 0.97
-    eyes.forEach((eye) => {
-      eye.scale.y = blinkNow ? 0.08 : open
-      eye.position.x = gaze.current.x * 0.03
-      eye.position.y = gaze.current.y * 0.02
-    })
+    else g.position.y = 0.35 + Math.sin(t * 1.2) * 0.03
   })
 
   const onPointerDown = (e) => {
