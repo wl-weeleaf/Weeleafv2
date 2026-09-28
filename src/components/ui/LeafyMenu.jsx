@@ -1,8 +1,10 @@
-import React from 'react'
+import React, { useState } from 'react'
 import useLeafyUi from '../../store/leafyUi'
+import { getGrokKey, setGrokKey } from '../../lib/livi/grok'
 
 export default function LeafyMenu() {
   const { menuOpen, closeMenu, motion, setMotion, follow, setFollow, blink, setBlink } = useLeafyUi()
+  const [key, setKey] = useState(() => getGrokKey())
   if (!menuOpen) return null
 
   return (
@@ -53,9 +55,20 @@ export default function LeafyMenu() {
           Blink og mimik
           <input type="checkbox" checked={blink} onChange={(e) => setBlink(e.target.checked)} />
         </label>
-        <p className="mt-4 text-xs text-white/40">
-          Ét klik på Leafy åbner chatten i bundbaren. Dobbeltklik åbner denne menu.
-        </p>
+
+        <p className="text-sm text-white/60 mt-4 mb-2">Grok / xAI</p>
+        <input
+          type="password"
+          placeholder="xAI API-nøgle"
+          value={key}
+          onChange={(e) => {
+            setKey(e.target.value)
+            setGrokKey(e.target.value.trim())
+          }}
+          className="w-full rounded-xl px-3 py-2 text-sm text-white outline-none"
+          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+        />
+        <p className="mt-2 text-xs text-white/40">Nøglen gemmes kun i denne browser. Hent den på console.x.ai</p>
       </div>
     </div>
   )

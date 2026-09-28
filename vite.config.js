@@ -23,6 +23,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
       },
+      '/xai': {
+        target: 'https://api.x.ai',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/xai/, '/v1'),
+      },
     },
   },
 })

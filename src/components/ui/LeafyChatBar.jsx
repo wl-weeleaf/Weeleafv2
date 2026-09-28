@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react'
 import useLeafyUi from '../../store/leafyUi'
-import { ChatStreamParser } from '../../lib/livi/protocol'
 import { startDictation } from '../leafy/Dictation'
+import { streamGrok } from '../../lib/livi/grok'
 import './leafyChat.css'
 
 export default function LeafyChatBar() {
@@ -40,54 +40,20 @@ export default function LeafyChatBar() {
     setError('')
     setPending(true)
     setBubble('Hmm…')
-    let answer = ''
-    let complete = false
     try {
-      const res = await fetch('/api/livi/chat', {
-        method: 'POST',
+      const answer = await streamGrok({
+        messages: history,
         signal: controller.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history }),
+        onDelta: (partial) => {
+          if (generation === seq.current) setBubble(partial)
+        },
       })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw Error(data.error || 'Forbindelsen kunne ikke svare.')
-      }
-      if (!res.body) throw Error('Svaret mangler.')
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      const parser = new ChatStreamParser()
-      try {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          if (generation !== seq.current) return
-          for (const event of parser.push(decoder.decode(value, { stream: true }))) {
-            if (event === '[DONE]') {
-              complete = true
-              continue
-            }
-            const data = JSON.parse(event)
-            if (data.error) throw Error('Svaret blev afbrudt.')
-            const delta = data.choices?.[0]?.delta?.content
-            if (typeof delta === 'string') {
-              answer += delta
-              setBubble(answer)
-            }
-            if (data.choices?.[0]?.finish_reason) complete = true
-          }
-        }
-      } finally {
-        await reader.cancel().catch(() => {})
-        reader.releaseLock()
-      }
       if (generation !== seq.current) return
-      if (!complete || !answer.trim()) throw Error('Svaret er ufuldstændigt. Prøv igen.')
       setMessages([...history, { role: 'assistant', content: answer }])
     } catch (err) {
       if (generation === seq.current && err.name !== 'AbortError') {
-        setError(err.message || 'AI-forbindelsen er ikke tilkoblet endnu.')
-        setBubble(answer || 'Vi mangler forbindelse. Prøv igen om lidt.')
+        setError(err.message || 'Grok kunne ikke svare.')
+        setBubble('Vi mangler forbindelse til Grok. Tjek nøglen under Leafys menu.')
       }
     } finally {
       if (generation === seq.current) setPending(false)
