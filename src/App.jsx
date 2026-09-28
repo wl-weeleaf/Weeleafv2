@@ -5,6 +5,7 @@ import ModalSceneBackground from './components/ui/ModalSceneBackground'
 import SceneTransition from './components/ui/SceneTransition'
 import ScrollHint from './components/ui/ScrollHint'
 import HUD from './components/ui/HUD'
+import LeafyMenu from './components/ui/LeafyMenu'
 import { deferNonCritical } from './hooks/useLiteGraphics'
 import { preloadCoinImages } from './utils/textureCache'
 
@@ -49,7 +50,7 @@ export default function App() {
   }, [])
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden select-none">
+    <div className="relative h-screen w-screen overflow-hidden select-none">
       <MainSceneBackground paused={isModalOpen} />
 
       <div
@@ -69,6 +70,7 @@ export default function App() {
 
       <SceneTransition />
       <ModalSceneBackground />
+      <LeafyMenu />
       <Suspense fallback={null}>
         <Modal />
       </Suspense>
