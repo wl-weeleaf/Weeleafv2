@@ -8,7 +8,6 @@ export default function CenterLeafy() {
   const mobile = size.width < 768
   const npc = useMemo(() => LeafyNPC.create(), [])
   const scale = (mobile ? 3.2 : 3.8) * 0.25
-  const baseY = 0.35
   const look = useRef(new THREE.Vector2())
 
   useFrame((state, rawDt) => {
@@ -16,11 +15,10 @@ export default function CenterLeafy() {
     const active = Math.abs(state.pointer.x) > 0.02 || Math.abs(state.pointer.y) > 0.02
     look.current.set(state.pointer.x, state.pointer.y)
     npc.update(dt, look.current, active)
-    npc.model.position.y += baseY
   })
 
   return (
-    <group position={[0, 0, 0]} scale={scale}>
+    <group position={[0, 0.35, 0]} scale={scale}>
       <primitive object={npc.model} />
     </group>
   )
