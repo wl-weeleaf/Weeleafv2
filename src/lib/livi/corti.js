@@ -4,7 +4,7 @@ const PERSONA =
   'Du er Leafy, WeeLeafs venlige guide. Svar kort og varmt på dansk, medmindre brugeren skriver engelsk. Du kender Hemptation, WL Hive, shoppen, donationer og community.'
 
 const DEFAULTS = {
-  clientId: 'weeleaf-default_client',
+  clientId: 'weeleaf-leafy',
   clientSecret: '',
   tenant: 'base',
   environment: 'eu',
@@ -49,7 +49,7 @@ export async function getCortiToken(signal) {
   if (cfg.apiKey) return cfg.apiKey
   if (tokenCache.value && Date.now() < tokenCache.exp - 15000) return tokenCache.value
   if (!cfg.clientId || !cfg.clientSecret) {
-    throw new Error('Corti client_secret mangler. Dobbeltklik Leafy og indsæt secret til weeleaf-default_client.')
+    throw new Error('Corti client_secret mangler. Dobbeltklik Leafy og indsæt secret til weeleaf-leafy.')
   }
 
   const body = new URLSearchParams({
@@ -59,7 +59,7 @@ export async function getCortiToken(signal) {
     scope: 'openid',
   })
 
-  const realms = [...new Set([cfg.tenant, 'base', 'weeleaf'].filter(Boolean))]
+  const realms = [...new Set([cfg.tenant, 'base'].filter(Boolean))]
   let lastErr = 'Corti auth fejlede'
   for (const realm of realms) {
     const res = await fetch(`/corti-auth/realms/${encodeURIComponent(realm)}/protocol/openid-connect/token`, {
@@ -74,7 +74,6 @@ export async function getCortiToken(signal) {
         value: data.access_token,
         exp: Date.now() + (Number(data.expires_in) || 300) * 1000,
       }
-      if (realm !== cfg.tenant) setCortiConfig({ tenant: realm })
       return data.access_token
     }
     lastErr = data.error_description || data.error || data.raw || `Corti auth ${res.status} (${realm})`
@@ -101,11 +100,6 @@ function pickText(data) {
   }
   const choice = data.choices?.[0]?.message?.content || data.choices?.[0]?.delta?.content
   if (typeof choice === 'string') return choice
-  if (Array.isArray(data.history)) {
-    const last = [...data.history].reverse().find((m) => m.role === 'agent' || m.role === 'assistant')
-    if (last?.content) return last.content
-    if (last?.parts) return last.parts.map((p) => p.text || '').join('\n')
-  }
   return ''
 }
 
@@ -184,7 +178,7 @@ export async function streamCorti({ messages, signal, onDelta }) {
     sessionStorage.removeItem(AGENT_KEY)
     throw new Error(data.error?.message || data.message || data.raw || `Corti message ${res.status}`)
   }
-  const answer = pickText(data) || 'Corti svarede, men uden tekstfelt. Token virker.'
+  const answer = pickText(data) || 'Corti svarede, men uden synlig tekst. Token virker.'
   onDelta?.(answer)
   return answer
 }
