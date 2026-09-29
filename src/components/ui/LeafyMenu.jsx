@@ -16,7 +16,7 @@ export default function LeafyMenu() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={closeMenu}>
       <div
-        className="w-full max-w-md rounded-3xl p-6 text-white shadow-2xl max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl p-6 text-white shadow-2xl"
         style={{
           background: 'rgba(8,22,12,0.92)',
           border: '1px solid rgba(74,222,128,0.28)',
@@ -61,14 +61,12 @@ export default function LeafyMenu() {
           <input type="checkbox" checked={blink} onChange={(e) => setBlink(e.target.checked)} />
         </label>
 
-        <p className="mb-2 mt-5 text-sm text-white/60">Corti — weeleaf-default_client</p>
+        <p className="mb-2 mt-5 text-sm text-white/60">Corti — weeleaf-leafy</p>
         <div className="space-y-2">
           <input className="wl-cfg" placeholder="client_id" value={cfg.clientId} onChange={(e) => patch('clientId', e.target.value)} />
           <input className="wl-cfg" type="password" placeholder="client_secret" value={cfg.clientSecret} onChange={(e) => patch('clientSecret', e.target.value)} />
-          <input className="wl-cfg" placeholder="tenant (fx weeleaf)" value={cfg.tenant} onChange={(e) => patch('tenant', e.target.value)} />
-          <input className="wl-cfg" placeholder="environment (eu)" value={cfg.environment} onChange={(e) => patch('environment', e.target.value)} />
-          <input className="wl-cfg" placeholder="model (corti-s1-instant)" value={cfg.model} onChange={(e) => patch('model', e.target.value)} />
-          <input className="wl-cfg" type="password" placeholder="Corti Models API-nøgle (valgfri)" value={cfg.apiKey} onChange={(e) => patch('apiKey', e.target.value)} />
+          <input className="wl-cfg" placeholder="tenant" value={cfg.tenant} onChange={(e) => patch('tenant', e.target.value)} />
+          <input className="wl-cfg" placeholder="environment" value={cfg.environment} onChange={(e) => patch('environment', e.target.value)} />
         </div>
         <button
           className="mt-3 w-full rounded-xl py-2 text-sm"
