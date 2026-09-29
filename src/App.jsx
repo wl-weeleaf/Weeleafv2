@@ -11,8 +11,6 @@ import { preloadCoinImages } from './utils/textureCache'
 
 const Scene = lazy(() => import('./components/scene/Scene'))
 const Modal = lazy(() => import('./components/ui/Modal'))
-const LeafyAssistant = lazy(() => import('./components/ui/LeafyAssistant'))
-const ChatBot = lazy(() => import('./components/ui/ChatBot'))
 
 function LoadingScreen() {
   return (
@@ -21,16 +19,16 @@ function LoadingScreen() {
       style={{ background: 'linear-gradient(135deg, #050f08 0%, #0a1f10 50%, #061209 100%)' }}
     >
       <div className="text-center space-y-5">
-        <div className="relative w-20 h-20 mx-auto">
+        <div className="relative mx-auto h-20 w-20">
           <div
-            className="absolute inset-0 rounded-full border-2 animate-spin"
+            className="absolute inset-0 animate-spin rounded-full border-2"
             style={{ borderColor: 'rgba(74,222,128,0.15)', borderTopColor: '#4ade80' }}
           />
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-green-400 font-bold text-xs tracking-widest">WL</span>
+            <span className="text-xs font-bold tracking-widest text-green-400">WL</span>
           </div>
         </div>
-        <div className="text-white font-display text-2xl tracking-[0.18em]">WeeLeaf</div>
+        <div className="font-display text-2xl tracking-[0.18em] text-white">WeeLeaf</div>
       </div>
     </div>
   )
@@ -54,7 +52,6 @@ export default function App() {
   return (
     <div className="relative h-screen w-screen overflow-hidden select-none">
       <MainSceneBackground paused={isModalOpen} />
-
       <div
         className="absolute inset-0 z-10"
         style={{
@@ -69,14 +66,11 @@ export default function App() {
         <HUD />
         <ScrollHint />
       </div>
-
       <SceneTransition />
       <ModalSceneBackground />
       <LeafyMenu />
       <Suspense fallback={null}>
         <Modal />
-        <LeafyAssistant />
-        <ChatBot />
       </Suspense>
     </div>
   )
