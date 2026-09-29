@@ -18,6 +18,8 @@ export default function CenterLeafy() {
   const blink = useLeafyUi((s) => s.blink)
   const motion = useLeafyUi((s) => s.motion)
   const chatOpen = useLeafyUi((s) => s.chatOpen)
+  const speaking = useLeafyUi((s) => s.speaking)
+  const viseme = useLeafyUi((s) => s.viseme)
   const openChat = useLeafyUi((s) => s.openChat)
   const openMenu = useLeafyUi((s) => s.openMenu)
   const baseY = ORBIT_HEIGHT + 0.72 + 3.4 * scale * 0.5
@@ -45,9 +47,9 @@ export default function CenterLeafy() {
     const dt = Math.min(rawDt, 0.05)
     const active = follow && (Math.abs(state.pointer.x) > 0.02 || Math.abs(state.pointer.y) > 0.02)
     pointer.current.set(state.pointer.x, state.pointer.y)
-    const poseState = chatOpen ? 'attentive' : 'idle'
+    const poseState = speaking ? 'speaking' : chatOpen ? 'attentive' : 'idle'
     npc.update(dt, pointer.current, active, 'idle', poseState, blink, follow, motion)
-    npc.setMouth('AA')
+    npc.setMouth(speaking ? viseme : 'AA')
     npc.setAccessories(false, false)
     npc.orientAccessories(camera.position)
   })

@@ -1,21 +1,35 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import useLeafyUi from '../../store/leafyUi'
 import { startDictation } from '../leafy/Dictation'
+import { LeafySpeech } from '../leafy/LeafySpeech'
 import { streamCorti } from '../../lib/livi/corti'
 import './leafyChat.css'
 
 export default function LeafyChatBar() {
   const chatOpen = useLeafyUi((s) => s.chatOpen)
   const closeChat = useLeafyUi((s) => s.closeChat)
+  const setSpeaking = useLeafyUi((s) => s.setSpeaking)
+  const setViseme = useLeafyUi((s) => s.setViseme)
   const abort = useRef(null)
   const dictation = useRef(null)
+  const speech = useRef(null)
+  const threadRef = useRef(null)
   const seq = useRef(0)
   const [input, setInput] = useState('')
   const [pending, setPending] = useState(false)
   const [listening, setListening] = useState(false)
-  const [bubble, setBubble] = useState('Corti er klar. Hvad skal vi finde p\u00e5 i dag?'.replace('\\u00e5', 'å'))
+  const [bubble, setBubble] = useState('Hvad skal vi finde på i dag?')
   const [error, setError] = useState('')
   const [messages, setMessages] = useState([])
+
+  useEffect(() => {
+    speech.current = new LeafySpeech(setSpeaking, setViseme, setError)
+    return () => speech.current?.cancel()
+  }, [setSpeaking, setViseme])
+
+  useEffect(() => {
+    threadRef.current?.scrollTo(0, threadRef.current.scrollHeight)
+  }, [messages, bubble, pending])
 
   function stop() {
     seq.current++
@@ -23,6 +37,7 @@ export default function LeafyChatBar() {
     abort.current = null
     dictation.current?.()
     dictation.current = null
+    speech.current?.cancel()
     setPending(false)
     setListening(false)
   }
@@ -39,7 +54,8 @@ export default function LeafyChatBar() {
     setInput('')
     setError('')
     setPending(true)
-    setBubble('Corti tænker…')
+    setMessages(history)
+    setBubble('Leafy tænker…')
     try {
       const answer = await streamCorti({
         messages: history,
@@ -50,10 +66,12 @@ export default function LeafyChatBar() {
       })
       if (generation !== seq.current) return
       setMessages([...history, { role: 'assistant', content: answer }])
+      setBubble(answer)
+      speech.current?.speak(answer)
     } catch (err) {
       if (generation === seq.current && err.name !== 'AbortError') {
         setError(err.message || 'Corti kunne ikke svare.')
-        setBubble('Corti svarede ikke. Tjek weeleaf-default_client i menuen.')
+        setBubble('Jeg hørte dig, men Corti sendte ingen tekst.')
       }
     } finally {
       if (generation === seq.current) setPending(false)
@@ -80,7 +98,15 @@ export default function LeafyChatBar() {
 
   return (
     <div className="wl-room-bottom">
-      <div className="mb-2 text-center text-xs tracking-wide text-emerald-200/80">Leafy · Corti</div>
+      {messages.length > 0 && (
+        <div className="wl-room-thread" ref={threadRef}>
+          {messages.map((m, i) => (
+            <div key={i} className={`wl-room-line ${m.role}`}>
+              {m.content}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="wl-room-bubble" aria-live="polite">
         {bubble}
       </div>
@@ -94,13 +120,13 @@ export default function LeafyChatBar() {
             maxLength={6000}
             onChange={(e) => setInput(e.target.value)}
           />
-          <button type="submit" disabled={!input.trim() || pending} aria-label="Send besked">
+          <button type="submit" disabled={!input.trim() || pending} aria-label="Send">
             ↑
           </button>
         </div>
         <button className="wl-room-talk" type="button" onClick={microphone} aria-pressed={listening}>
           <i>{listening ? '■' : '●'}</i>
-          <span>{listening ? 'Stop diktering' : 'Tal med Leafy'}</span>
+          <span>{listening ? 'Stop' : 'Tal'}</span>
         </button>
         <button className="wl-room-talk" type="button" onClick={closeChat}>
           <i>×</i>
