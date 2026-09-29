@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react'
 import useLeafyUi from '../../store/leafyUi'
 import { startDictation } from '../leafy/Dictation'
-import { streamGrok } from '../../lib/livi/grok'
+import { streamCorti } from '../../lib/livi/corti'
 import './leafyChat.css'
 
 export default function LeafyChatBar() {
@@ -41,7 +41,7 @@ export default function LeafyChatBar() {
     setPending(true)
     setBubble('Hmm…')
     try {
-      const answer = await streamGrok({
+      const answer = await streamCorti({
         messages: history,
         signal: controller.signal,
         onDelta: (partial) => {
@@ -52,8 +52,8 @@ export default function LeafyChatBar() {
       setMessages([...history, { role: 'assistant', content: answer }])
     } catch (err) {
       if (generation === seq.current && err.name !== 'AbortError') {
-        setError(err.message || 'Leafy kunne ikke svare.')
-        setBubble('Jeg kunne ikke nå forbindelsen. Prøv igen om et øjeblik.')
+        setError(err.message || 'Corti kunne ikke svare.')
+        setBubble('Corti svarede ikke. Tjek weeleaf-default_client i Leafys menu.')
       }
     } finally {
       if (generation === seq.current) setPending(false)
