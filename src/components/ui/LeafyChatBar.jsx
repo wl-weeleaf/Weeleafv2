@@ -13,7 +13,7 @@ export default function LeafyChatBar() {
   const [input, setInput] = useState('')
   const [pending, setPending] = useState(false)
   const [listening, setListening] = useState(false)
-  const [bubble, setBubble] = useState('Hvad skal vi finde på i dag?')
+  const [bubble, setBubble] = useState('Corti er klar. Hvad skal vi finde p\u00e5 i dag?'.replace('\\u00e5', 'å'))
   const [error, setError] = useState('')
   const [messages, setMessages] = useState([])
 
@@ -39,7 +39,7 @@ export default function LeafyChatBar() {
     setInput('')
     setError('')
     setPending(true)
-    setBubble('Hmm…')
+    setBubble('Corti tænker…')
     try {
       const answer = await streamCorti({
         messages: history,
@@ -53,7 +53,7 @@ export default function LeafyChatBar() {
     } catch (err) {
       if (generation === seq.current && err.name !== 'AbortError') {
         setError(err.message || 'Corti kunne ikke svare.')
-        setBubble('Corti svarede ikke. Tjek weeleaf-default_client i Leafys menu.')
+        setBubble('Corti svarede ikke. Tjek weeleaf-default_client i menuen.')
       }
     } finally {
       if (generation === seq.current) setPending(false)
@@ -80,6 +80,7 @@ export default function LeafyChatBar() {
 
   return (
     <div className="wl-room-bottom">
+      <div className="mb-2 text-center text-xs tracking-wide text-emerald-200/80">Leafy · Corti</div>
       <div className="wl-room-bubble" aria-live="polite">
         {bubble}
       </div>
