@@ -1,9 +1,50 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { LayeredLeafyNPC } from '../leafy/LayeredLeafyNPC'
 import useStore from '../../store/useStore'
 import useLeafyUi from '../../store/leafyUi'
 import { LeafySpeech } from '../leafy/LeafySpeech'
 import LeafyChatBar from './LeafyChatBar'
 import './leafyChat.css'
+
+function SameLeafy() {
+  const npcRef = useRef(null)
+  const [ready, setReady] = useState(false)
+  const follow = useLeafyUi((s) => s.follow)
+  const blink = useLeafyUi((s) => s.blink)
+  const motion = useLeafyUi((s) => s.motion)
+  const speaking = useLeafyUi((s) => s.speaking)
+  const viseme = useLeafyUi((s) => s.viseme)
+  const pointer = useRef({ x: 0, y: 0 })
+
+  useEffect(() => {
+    let cancelled = false
+    LayeredLeafyNPC.load('/leafy').then((npc) => {
+      if (cancelled) return
+      npc.setAccessories(false, false)
+      npc.setMouth('AA')
+      npc.setLayers(true, true)
+      npcRef.current = npc
+      setReady(true)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  useFrame((state, dt) => {
+    const npc = npcRef.current
+    if (!npc) return
+    pointer.current = state.pointer
+    npc.update(Math.min(dt, 0.05), pointer.current, follow, 'idle', speaking ? 'speaking' : 'attentive', blink, follow, motion)
+    npc.setMouth(speaking ? viseme : 'AA')
+  })
+
+  if (!ready || !npcRef.current) return null
+  return (
+    <group position={[0, -0.15, 0]} scale={0.85}>
+      <primitive object={npcRef.current.model} />
+    </group>
+  )
+}
 
 function modalText(coin) {
   if (!coin) return ''
@@ -19,6 +60,7 @@ export default function CornerLeafy() {
   const open = useStore((s) => s.isModalOpen)
   const coin = useStore((s) => s.activeCoin)
   const openChat = useLeafyUi((s) => s.openChat)
+  const openMenu = useLeafyUi((s) => s.openMenu)
   const setSpeaking = useLeafyUi((s) => s.setSpeaking)
   const setViseme = useLeafyUi((s) => s.setViseme)
   const speech = useRef(null)
@@ -41,15 +83,21 @@ export default function CornerLeafy() {
       const line = text || 'Jeg kan læse det her op for dig.'
       setBubble(line)
       speech.current?.speak(line)
-    }, 700)
+    }, 500)
     return () => clearTimeout(read)
   }, [open, text, openChat])
 
   if (!open) return null
 
   return (
-    <div className="wl-corner is-landed">
+    <div className="wl-corner is-landed" style={{ zIndex: 90 }}>
       <div className="wl-room-bubble wl-corner-bubble">{bubble || 'Jeg flyver derned…'}</div>
+      <div className="wl-corner-stage" onClick={openChat} onDoubleClick={openMenu}>
+        <Canvas camera={{ position: [0, 0.2, 4.2], fov: 35 }} gl={{ alpha: true, antialias: true }} style={{ width: 220, height: 240, background: 'transparent' }}>
+          <ambientLight intensity={1.1} />
+          <SameLeafy />
+        </Canvas>
+      </div>
       <div className="wl-corner-chat">
         <LeafyChatBar />
       </div>
