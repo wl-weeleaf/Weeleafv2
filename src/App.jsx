@@ -5,6 +5,7 @@ import ScrollHint from './components/ui/ScrollHint'
 import HUD from './components/ui/HUD'
 import LeafyMenu from './components/ui/LeafyMenu'
 import CornerLeafy from './components/ui/CornerLeafy'
+import LeafyChatBar from './components/ui/LeafyChatBar'
 import LegalNotice, { CookieBanner, LegalLinks } from './components/ui/LegalNotice'
 import SoftClouds from './components/ui/SoftClouds'
 import { deferNonCritical } from './hooks/useLiteGraphics'
@@ -54,7 +55,7 @@ export default function App() {
   return (
     <div className="relative h-screen w-screen overflow-hidden select-none">
       <MainSceneBackground paused={!ready} />
-      <div className="absolute inset-0 z-10" style={{ opacity: ready && sceneVisible ? 1 : 0, pointerEvents: !ready || isModalOpen ? 'none' : 'auto' }}>
+      <div className="absolute inset-0 z-10" style={{ opacity: ready && sceneVisible && !isModalOpen ? 1 : 0, pointerEvents: !ready || isModalOpen ? 'none' : 'auto' }}>
         <Suspense fallback={null}>
           <Scene />
         </Suspense>
@@ -65,6 +66,7 @@ export default function App() {
       {ready && <LeafyMenu />}
       {ready && <Suspense fallback={null}><Modal /></Suspense>}
       {ready && <CornerLeafy />}
+      {ready && <LeafyChatBar />}
       {ready && <CookieBanner onOpen={setLegal} />}
       {ready && <LegalLinks onOpen={setLegal} />}
       {legal && <LegalNotice page={legal} onClose={() => setLegal(null)} />}
