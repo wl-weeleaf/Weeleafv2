@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 import tempfile
 import wave
@@ -12,16 +13,19 @@ class MultiVoice:
             raise RuntimeError('Piper-programmet blev ikke fundet')
         if not model or not os.path.exists(model):
             raise RuntimeError('Dansk stemmemodel mangler')
+        paced = re.sub(r',\s*', '. ', text)
+        paced = re.sub(r'\s+', ' ', paced).strip()
         folder = os.path.dirname(exe)
         data = os.path.join(folder, 'espeak-ng-data')
+        scale = str(round(1.28 / max(speed, 0.7), 2))
         text_file = tempfile.NamedTemporaryFile(suffix='.txt', delete=False)
         out = text_file.name + '.wav'
-        text_file.write(text.encode('utf-8'))
+        text_file.write(paced.encode('utf-8'))
         text_file.close()
         try:
             with open(text_file.name, 'rb') as handle:
                 run = subprocess.run(
-                    [exe, '--model', model, '--output_file', out, '--espeak_data', data, '--debug'],
+                    [exe, '--model', model, '--output_file', out, '--espeak_data', data, '--length_scale', scale, '--sentence_silence', '0.45'],
                     stdin=handle,
                     cwd=folder,
                     capture_output=True,
