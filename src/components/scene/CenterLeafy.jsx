@@ -3,20 +3,24 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { LayeredLeafyNPC } from '../leafy/LayeredLeafyNPC'
 import { CameraGaze } from '../leafy/CameraGaze'
-import { OrbitGesture } from '../leafy/OrbitGesture'
 import useLeafyUi from '../../store/leafyUi'
-import { ORBIT_HEIGHT } from '../../data/coinData'
+import { orbitState } from '../../data/orbitState'
+import { ORBIT_HEIGHT, ORBIT_RADIUS } from '../../data/coinData'
+import useStore from '../../store/useStore'
+
+const PASSES = 10
 
 export default function CenterLeafy() {
-  const { size, camera, controls } = useThree()
+  const { size, camera } = useThree()
   const mobile = size.width < 768
   const scale = (mobile ? 3.2 : 3.8) * 0.25
+  const holder = useRef()
   const npcRef = useRef(null)
   const gazeRef = useRef(null)
-  const gesture = useRef(new OrbitGesture(2))
   const spinTime = useRef(-1)
-  const cooldown = useRef(0)
-  const yaw = useRef(0)
+  const eyeRoll = useRef(-1)
+  const passes = useRef(0)
+  const prevFront = useRef(false)
   const clickTimer = useRef(0)
   const pointer = useRef(new THREE.Vector2())
   const [ready, setReady] = useState(false)
@@ -61,19 +65,51 @@ export default function CenterLeafy() {
 
   useFrame((state, rawDt) => {
     const npc = npcRef.current
-    if (!npc) return
+    const group = holder.current
+    if (!npc || !group) return
     const dt = Math.min(rawDt, 0.05)
-    const azimuth = controls?.getAzimuthalAngle?.() ?? Math.atan2(camera.position.x, camera.position.z)
-    const dragging = Boolean(controls?.state === 2 || state.pointer.buttons)
-    if (gesture.current.update(azimuth, dragging, dt)) {
-      spinTime.current = 0
-      cooldown.current = 2.5
+    const coins = useStore.getState().coins
+    const core = coins.find((c) => c.id === 'wl-core') || coins[0]
+    const coreAngle = (((core?.angle || 0) + orbitState.angle) * Math.PI) / 180
+    const corePos = new THREE.Vector3(Math.cos(coreAngle) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(coreAngle) * ORBIT_RADIUS)
+    const camDir = camera.position.clone().setY(0).normalize()
+    const coreDir = corePos.clone().setY(0).normalize()
+    const facing = coreDir.dot(camDir)
+    const inFront = facing > 0.92
+    if (inFront && !prevFront.current && eyeRoll.current < 0 && spinTime.current < 0) {
+      passes.current += 1
+      if (passes.current >= PASSES) {
+        passes.current = 0
+        eyeRoll.current = 0
+      }
     }
-    setOrbitProgress(gesture.current.progress)
-    yaw.current += Math.atan2(Math.sin(azimuth - yaw.current), Math.cos(azimuth - yaw.current)) * (1 - Math.exp(-dt * 4))
-    cooldown.current = Math.max(0, cooldown.current - dt)
+    prevFront.current = inFront
+    setOrbitProgress(passes.current / PASSES)
+
+    let look = null
+    let nearest = -1
+    for (const coin of coins) {
+      const a = (((coin.angle || 0) + orbitState.angle) * Math.PI) / 180
+      const p = new THREE.Vector3(Math.cos(a) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(a) * ORBIT_RADIUS)
+      const d = p.clone().setY(0).normalize().dot(camDir)
+      if (d > 0.55 && d > nearest) {
+        nearest = d
+        look = p
+      }
+    }
+
     let lift = 0
     let spin = 0
+    if (eyeRoll.current >= 0) {
+      eyeRoll.current += dt
+      const p = Math.min(1, eyeRoll.current / 0.9)
+      npc.face?.setEyeRoll?.(p * Math.PI * 2)
+      if (p === 1) {
+        eyeRoll.current = -1
+        npc.face?.setEyeRoll?.(0)
+        spinTime.current = 0
+      }
+    }
     if (spinTime.current >= 0) {
       spinTime.current += dt
       const p = Math.min(1, spinTime.current / 1.35)
@@ -81,22 +117,22 @@ export default function CenterLeafy() {
       spin = Math.PI * 2 * (p * p * (3 - 2 * p))
       if (p === 1) spinTime.current = -1
     }
-    if (npcRef.current && holderPose.current) {
-      holderPose.current.position.y = baseY + lift
-      holderPose.current.rotation.y = yaw.current + spin
-    }
+    group.position.y = baseY + lift
+    group.rotation.y = spin
+
     const camPoint = gazeRef.current?.point
-    const active = camPoint ? true : follow && (Math.abs(state.pointer.x) > 0.02 || Math.abs(state.pointer.y) > 0.02)
-    if (camPoint) pointer.current.set(camPoint.x, camPoint.y)
+    if (look && !camPoint && eyeRoll.current < 0) {
+      const rel = look.clone().sub(group.position)
+      pointer.current.set(THREE.MathUtils.clamp(rel.x / ORBIT_RADIUS, -1, 1), THREE.MathUtils.clamp(rel.y * 0.4, -0.4, 0.4))
+    } else if (camPoint) pointer.current.set(camPoint.x, camPoint.y)
     else pointer.current.set(state.pointer.x, state.pointer.y)
+
     const poseState = speaking ? 'speaking' : chatOpen ? 'attentive' : 'idle'
-    npc.update(dt, pointer.current, active, 'idle', poseState, blink, follow || Boolean(camPoint), motion)
+    npc.update(dt, pointer.current, true, 'idle', poseState, blink, follow || Boolean(look) || Boolean(camPoint), motion)
     npc.setMouth(speaking ? viseme : 'AA')
     npc.setAccessories(false, false)
     npc.orientAccessories(camera.position)
   })
-
-  const holderPose = useRef()
 
   const onPointerDown = (e) => {
     e.stopPropagation()
@@ -115,7 +151,7 @@ export default function CenterLeafy() {
   if (!ready || !npcRef.current) return null
 
   return (
-    <group ref={holderPose} position={[0, baseY, 0]} scale={scale}>
+    <group ref={holder} position={[0, baseY, 0]} scale={scale}>
       <primitive object={npcRef.current.model} />
       <mesh position={[0, 0, 0.55]} onPointerDown={onPointerDown}>
         <circleGeometry args={[1.35, 24]} />
