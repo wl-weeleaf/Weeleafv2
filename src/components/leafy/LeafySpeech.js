@@ -55,14 +55,19 @@ export class LeafySpeech {
     this.audio.play().catch(() => {})
     this.cancel()
     const gen = this.generation
-    speakWithKokoro({ text: clean, emotion: 'curious', speed: 0.82 })
+    fetch('/leafy-voice.mp3')
+      .then((response) => response.ok ? response.blob() : Promise.reject())
       .then((blob) => {
-        if (gen !== this.generation || !blob || blob.size < 1000) throw new Error('tom lyd')
+        if (gen !== this.generation) return
         return this.playUrl(URL.createObjectURL(blob), clean, gen)
       })
+      .catch(() => speakWithKokoro({ text: clean, emotion: 'curious', speed: 0.82 }))
+      .then((blob) => {
+        if (gen !== this.generation || !blob) return
+        if (blob instanceof Blob) return this.playUrl(URL.createObjectURL(blob), clean, gen)
+      })
       .catch(() => {
-        if (gen !== this.generation) return
-        this.playUrl('/leafy-voice.wav', clean, gen).catch(() => this.onError?.('Stemmeserveren kører ikke. Lad start-vinduet stå åbent.'))
+        if (gen === this.generation) this.onError?.('Din lydfil leafy-voice.mp3 blev ikke fundet i public.')
       })
   }
 }
