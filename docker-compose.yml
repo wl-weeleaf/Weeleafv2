@@ -1,0 +1,13 @@
+services:
+  leafy-tts:
+    build: ./services/leafy-tts
+    ports:
+      - "8787:8787"
+    environment:
+      LEAFY_VOICE_A: af_sky
+      LEAFY_VOICE_B: am_adam
+      LOG_LEVEL: INFO
+    volumes:
+      - leafy-voices:/models
+volumes:
+  leafy-voices:
