@@ -45,7 +45,7 @@ export default function App() {
   return (
     <div className="relative h-screen w-screen overflow-hidden select-none">
       <MainSceneBackground paused={isModalOpen} />
-      <div className="absolute inset-0" style={{ opacity: sceneVisible ? 1 : 0, zIndex: isModalOpen ? 80 : 10, pointerEvents: isModalOpen ? 'none' : 'auto', transition: 'opacity 0.4s ease-out' }}>
+      <div className="absolute inset-0 z-10" style={{ opacity: sceneVisible ? 1 : 0, pointerEvents: isModalOpen ? 'none' : 'auto', transition: 'opacity 0.4s ease-out' }}>
         <Suspense fallback={<LoadingScreen />}>
           <Scene />
         </Suspense>
@@ -55,10 +55,10 @@ export default function App() {
       <SceneTransition />
       <ModalSceneBackground />
       <LeafyMenu />
-      <CornerLeafy />
       <Suspense fallback={null}>
         <Modal />
       </Suspense>
+      <CornerLeafy />
     </div>
   )
 }
