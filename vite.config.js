@@ -19,6 +19,10 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/api/leafy': {
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'https://weeleaf.com',
         changeOrigin: true,
