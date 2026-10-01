@@ -110,14 +110,14 @@ export default function LeafyChatBar() {
       {messages.length > 0 && (
         <div className="wl-room-thread" ref={threadRef}>
           {messages.map((m, i) => (
-            <div key={i} className={`wl-room-line ${m.role}`}>{m.content}</div>
+            <div key={i} className={`wl-room-line wl-glass ${m.role}`}>{m.content}</div>
           ))}
         </div>
       )}
-      <div className="wl-room-bubble" aria-live="polite">{bubble}</div>
+      <div className="wl-room-bubble wl-glass" aria-live="polite">{bubble}</div>
       {error && <p className="wl-room-notice">{error}</p>}
       <form className="wl-room-composer" onSubmit={send}>
-        <div className="wl-room-input">
+        <div className="wl-room-input wl-glass">
           <input aria-label={t(language, 'placeholder')} placeholder={t(language, 'placeholder')} value={input} maxLength={6000} onChange={(e) => setInput(e.target.value)} />
           <button type="submit" disabled={!input.trim() || pending} aria-label={t(language, 'send')}>{'\u2191'}</button>
         </div>
