@@ -10,6 +10,13 @@ import useStore from '../../store/useStore'
 
 const PASSES = 10
 
+function ballBounce(p) {
+  const hits = p * 3
+  const n = Math.floor(hits)
+  const local = hits - n
+  return Math.abs(Math.sin(local * Math.PI)) * Math.pow(0.55, n)
+}
+
 export default function CenterLeafy() {
   const { size, camera } = useThree()
   const mobile = size.width < 768
@@ -57,10 +64,8 @@ export default function CenterLeafy() {
   }, [setCameraStatus])
 
   useEffect(() => {
-    const gaze = gazeRef.current
-    if (!gaze) return
-    if (cameraOn) gaze.start()
-    else gaze.stop()
+    if (cameraOn) gazeRef.current?.start()
+    else gazeRef.current?.stop()
   }, [cameraOn])
 
   useFrame((state, rawDt) => {
@@ -70,12 +75,10 @@ export default function CenterLeafy() {
     const dt = Math.min(rawDt, 0.05)
     const coins = useStore.getState().coins
     const core = coins.find((c) => c.id === 'wl-core') || coins[0]
-    const coreAngle = (((core?.angle || 0) + orbitState.angle) * Math.PI) / 180
-    const corePos = new THREE.Vector3(Math.cos(coreAngle) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(coreAngle) * ORBIT_RADIUS)
     const camDir = camera.position.clone().setY(0).normalize()
-    const coreDir = corePos.clone().setY(0).normalize()
-    const facing = coreDir.dot(camDir)
-    const inFront = facing > 0.92
+    const coreAngle = (((core?.angle || 0) + orbitState.angle) * Math.PI) / 180
+    const coreDir = new THREE.Vector3(Math.cos(coreAngle), 0, Math.sin(coreAngle))
+    const inFront = coreDir.dot(camDir) > 0.94
     if (inFront && !prevFront.current && eyeRoll.current < 0 && spinTime.current < 0) {
       passes.current += 1
       if (passes.current >= PASSES) {
@@ -87,19 +90,20 @@ export default function CenterLeafy() {
     setOrbitProgress(passes.current / PASSES)
 
     let look = null
-    let nearest = -1
+    let best = 0.82
     for (const coin of coins) {
       const a = (((coin.angle || 0) + orbitState.angle) * Math.PI) / 180
-      const p = new THREE.Vector3(Math.cos(a) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(a) * ORBIT_RADIUS)
-      const d = p.clone().setY(0).normalize().dot(camDir)
-      if (d > 0.55 && d > nearest) {
-        nearest = d
-        look = p
+      const dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a))
+      const d = dir.dot(camDir)
+      if (d > best) {
+        best = d
+        look = new THREE.Vector3(Math.cos(a) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(a) * ORBIT_RADIUS)
       }
     }
 
     let lift = 0
     let spin = 0
+    let squash = 1
     if (eyeRoll.current >= 0) {
       eyeRoll.current += dt
       const p = Math.min(1, eyeRoll.current / 0.9)
@@ -112,23 +116,23 @@ export default function CenterLeafy() {
     }
     if (spinTime.current >= 0) {
       spinTime.current += dt
-      const p = Math.min(1, spinTime.current / 1.35)
-      lift = Math.sin(Math.PI * p) * 0.75
+      const p = Math.min(1, spinTime.current / 1.6)
+      const b = ballBounce(p)
+      lift = b * 1.15
+      squash = 1 - b * 0.12
       spin = Math.PI * 2 * (p * p * (3 - 2 * p))
       if (p === 1) spinTime.current = -1
     }
     group.position.y = baseY + lift
     group.rotation.y = spin
+    group.scale.set(scale * (2 - squash), scale * squash, scale)
 
     const camPoint = gazeRef.current?.point
-    if (look && !camPoint && eyeRoll.current < 0) {
-      const rel = look.clone().sub(group.position)
-      pointer.current.set(THREE.MathUtils.clamp(rel.x / ORBIT_RADIUS, -1, 1), THREE.MathUtils.clamp(rel.y * 0.4, -0.4, 0.4))
-    } else if (camPoint) pointer.current.set(camPoint.x, camPoint.y)
+    if (camPoint) pointer.current.set(camPoint.x, camPoint.y)
+    else if (look) pointer.current.set(THREE.MathUtils.clamp(look.x / ORBIT_RADIUS, -1, 1), 0.05)
     else pointer.current.set(state.pointer.x, state.pointer.y)
 
-    const poseState = speaking ? 'speaking' : chatOpen ? 'attentive' : 'idle'
-    npc.update(dt, pointer.current, true, 'idle', poseState, blink, follow || Boolean(look) || Boolean(camPoint), motion)
+    npc.update(dt, pointer.current, follow || Boolean(camPoint) || Boolean(look), 'idle', speaking ? 'speaking' : chatOpen ? 'attentive' : 'idle', blink, true, motion)
     npc.setMouth(speaking ? viseme : 'AA')
     npc.setAccessories(false, false)
     npc.orientAccessories(camera.position)
@@ -149,7 +153,6 @@ export default function CenterLeafy() {
   }
 
   if (!ready || !npcRef.current) return null
-
   return (
     <group ref={holder} position={[0, baseY, 0]} scale={scale}>
       <primitive object={npcRef.current.model} />

@@ -18,9 +18,11 @@ export class LayeredLeafyNPC {
     this.face = face
     this.model = new THREE.Group()
     this.model.name = 'Leafy_torso'
+    const skin = new THREE.MeshBasicMaterial({ map: face.base, toneMapped: false })
+    const backMat = new THREE.MeshBasicMaterial({ map: back, toneMapped: false })
     for (const isFront of [true, false]) {
       const geo = referenceGeometry(isFront)
-      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: isFront ? face.base : back }))
+      const mesh = new THREE.Mesh(geo, isFront ? skin : backMat)
       mesh.name = isFront ? 'Leafy_torso_front' : 'Leafy_torso_back'
       this.model.add(mesh)
       if (isFront) {
@@ -34,16 +36,10 @@ export class LayeredLeafyNPC {
           for (let i = 0; i < p.count; i++) p.setZ(i, p.getZ(i) + offset)
           const layer = new THREE.Mesh(
             layerGeometry,
-            new THREE.MeshBasicMaterial({
-              map,
-              transparent: true,
-              depthWrite: false,
-              alphaTest: 0.015,
-              toneMapped: false,
-            })
+            new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, alphaTest: 0.04, toneMapped: false })
           )
           layer.name = name
-          layer.renderOrder = 1
+          layer.renderOrder = 2
           this.model.add(layer)
           if (name === 'Eyes_sprite') this.eyes = layer
           else if (name === 'Brows_sprite') this.brows = layer
@@ -80,27 +76,17 @@ export class LayeredLeafyNPC {
     this.brows.visible = eyes
     this.mouth.visible = mouth
   }
-
-  orientAccessories(camera) {
-    this.accessories.orient(camera)
-  }
-
-  setAccessories(hands, shoes) {
-    this.accessories.setVisible(hands, shoes)
-  }
-
-  setMouth(id) {
-    this.face.setMouth(id)
-  }
+  orientAccessories(camera) { this.accessories.orient(camera) }
+  setAccessories(hands, shoes) { this.accessories.setVisible(hands, shoes) }
+  setMouth(id) { this.face.setMouth(id) }
 
   update(dt, target, active, expression, state, animate = true, track = true, motion = 'idle') {
     this.elapsed += dt
     const t = this.elapsed
     this.accessories.update(t, state, animate && motion !== 'still', dt)
-    const desired =
-      active && track
-        ? target
-        : new THREE.Vector2(animate && state === 'idle' ? Math.sin(t * 0.47) * 0.17 : 0, animate && state === 'idle' ? Math.sin(t * 0.31) * 0.09 : 0)
+    const desired = active && track
+      ? target
+      : new THREE.Vector2(animate && state === 'idle' ? Math.sin(t * 0.47) * 0.17 : 0, animate && state === 'idle' ? Math.sin(t * 0.31) * 0.09 : 0)
     this.gaze.lerp(desired, 1 - Math.exp(-dt * 12))
     this.head.lerp(desired, 1 - Math.exp(-dt * 3))
     this.model.rotation.set(
@@ -108,10 +94,20 @@ export class LayeredLeafyNPC {
       this.head.x * 0.22,
       animate ? (state === 'thinking' ? Math.sin(t * 0.5) * 0.045 : Math.sin(t * 0.8) * 0.015) : 0
     )
-    this.model.position.y = animate && motion !== 'still' ? (motion === 'hop' ? Math.max(0, Math.sin(t * 3)) * 0.17 : Math.sin(t * 1.35) * 0.035) : 0
-    this.model.scale.setScalar(1)
+    let hop = 0
+    if (animate && motion === 'hop') {
+      const cycle = (t * 1.6) % 1
+      const bounce = Math.abs(Math.sin(cycle * Math.PI))
+      const amp = 0.22 * Math.pow(0.72, Math.floor(t * 1.6) % 3)
+      hop = bounce * amp
+      this.model.scale.set(1 + hop * 0.35, 1 - hop * 0.22, 1)
+    } else {
+      this.model.scale.setScalar(1)
+      hop = animate && motion !== 'still' ? Math.sin(t * 1.35) * 0.035 : 0
+    }
+    this.model.position.y = hop
     this.tipTurn = THREE.MathUtils.damp(this.tipTurn, this.head.x, 1.8, dt)
-    this.movement = THREE.MathUtils.damp(this.movement, animate && motion !== 'still' ? (state === 'idle' ? 1 : 0.7) : 0, 5, dt)
+    this.movement = THREE.MathUtils.damp(this.movement, animate && motion !== 'still' ? 1 : 0, 5, dt)
     for (const { mesh, base } of this.surfaces) {
       const p = mesh.geometry.getAttribute('position')
       for (let i = 0; i < p.count; i++) {
@@ -120,21 +116,9 @@ export class LayeredLeafyNPC {
       }
       p.needsUpdate = true
     }
-    if (animate && motion === 'idle' && state === 'idle') {
-      const phase = t % 19
-      this.model.position.y += phase < 1.3 ? Math.sin((phase / 1.3) * Math.PI) * 0.075 : 0
-    }
-    if (animate && state === 'idle' && motion !== 'still') {
-      const stretch = t % 47
-      if (stretch > 36 && stretch < 39) {
-        const a = Math.sin(((stretch - 36) / 3) * Math.PI) * 0.018
-        this.model.scale.set(1 - a * 0.35, 1 + a, 1)
-      }
-    }
-    if (animate && state === 'attentive') this.model.rotation.x += Math.sin(t * 1.5) * 0.012
     if (animate && t > this.blinkAt && this.blinkTime < 0) {
       this.blinkTime = 0
-      this.blinkAt = t + (Math.random() < 0.16 ? 0.34 : 2.7 + Math.random() * 3)
+      this.blinkAt = t + 2.7 + Math.random() * 3
     }
     let openness = 1
     if (this.blinkTime >= 0) {
@@ -142,13 +126,8 @@ export class LayeredLeafyNPC {
       openness = 1 - Math.sin(Math.min(1, this.blinkTime / 0.19) * Math.PI)
       if (this.blinkTime > 0.19) this.blinkTime = -1
     }
-    if (!animate) {
-      openness = 1
-      this.blinkTime = -1
-    }
-    this.face.setEyes(this.gaze.x, this.gaze.y, openness * (expression === 'sleepy' ? 0.55 : 1))
+    this.face.setEyes(this.gaze.x, this.gaze.y, openness)
     this.face.setBrows(expression, state === 'thinking')
   }
-
   dispose() {}
 }
