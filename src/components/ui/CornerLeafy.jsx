@@ -39,7 +39,7 @@ function SameLeafy() {
 
   if (!ready || !npcRef.current) return null
   return (
-    <group position={[0, -0.2, 0]} scale={0.42}>
+    <group position={[0, -0.05, 0]} scale={0.34}>
       <primitive object={npcRef.current.model} />
     </group>
   )
@@ -89,12 +89,10 @@ export default function CornerLeafy() {
       return
     }
     openChat()
-    const fly = setTimeout(() => setLanded(true), 2200)
-    const read = setTimeout(() => {
-      const line = text || 'Jeg kan læse det her op for dig.'
-      setBubble(line)
-      speech.current?.speak(line)
-    }, 4600)
+    const line = text || 'Jeg kan læse det her op for dig.'
+    setBubble(line)
+    const fly = setTimeout(() => setLanded(true), 1800)
+    const read = setTimeout(() => speech.current?.speak(line), 1800)
     return () => {
       clearTimeout(fly)
       clearTimeout(read)
@@ -104,14 +102,16 @@ export default function CornerLeafy() {
   if (!open) return null
 
   return (
-    <div className={landed ? 'wl-corner is-landed' : 'wl-corner'} style={{ zIndex: 90 }}>
-      {bubble && <div className="wl-room-bubble wl-glass wl-corner-bubble">{bubble}</div>}
-      <div className="wl-corner-stage" onClick={openChat} onDoubleClick={openMenu}>
-        <Canvas camera={{ position: [0, 0.15, 3.4], fov: 35 }} gl={{ alpha: true, antialias: true }} style={{ width: 148, height: 160, background: 'transparent' }}>
-          <ambientLight intensity={1.1} />
-          <SameLeafy />
-        </Canvas>
+    <>
+      {bubble && <div className="wl-room-bubble wl-glass wl-readout">{bubble}</div>}
+      <div className={landed ? 'wl-corner is-landed' : 'wl-corner'}>
+        <div className="wl-corner-stage" onClick={openChat} onDoubleClick={openMenu}>
+          <Canvas camera={{ position: [0, 0.2, 3.6], fov: 32 }} gl={{ alpha: true, antialias: true }} style={{ width: 220, height: 240, background: 'transparent' }}>
+            <ambientLight intensity={1.1} />
+            <SameLeafy />
+          </Canvas>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
