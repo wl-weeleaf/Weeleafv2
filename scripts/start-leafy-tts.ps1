@@ -26,6 +26,5 @@ $data = Join-Path $piperExe.DirectoryName 'espeak-ng-data'
 Set-Content -Path 'models\test.txt' -Value 'Hej, jeg er Leafy. Jeg er virkelig glad for, at du er her.' -Encoding utf8
 Get-Content 'models\test.txt' -Raw | & $piperExe.FullName --model $piper --output_file 'models\test.wav' --espeak_data $data --length_scale 1.28 --sentence_silence 0.45
 if (-not (Test-Path 'models\test.wav')) { Write-Host 'Piper lavede ingen testlyd'; exit 1 }
-Copy-Item 'models\test.wav' '..\..\public\leafy-voice.wav' -Force
 Write-Host 'Dansk testlyd er klar'
 & $venv -m uvicorn app:app --host 127.0.0.1 --port 8787
