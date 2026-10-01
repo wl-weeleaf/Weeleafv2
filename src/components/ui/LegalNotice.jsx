@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import './leafyChat.css'
 
 const CONTACT = 'privatliv@weeleaf.com'
 
@@ -76,11 +77,11 @@ export function CookieBanner({ onOpen }) {
     )
   }
   return (
-    <div className="fixed bottom-4 left-4 z-[110] max-w-sm rounded-3xl p-4" style={{ background: 'rgba(20,10,6,.92)', color: '#fffdf7', border: '1px solid rgba(240,192,112,.35)' }}>
-      <p className="text-sm leading-5">Vi gemmer kun et nødvendigt samtykkevalg. Statistik og reklame er slået fra. Du kan sige nej uden at miste siden.</p>
+    <div className="wl-glass fixed z-[110]" style={{ left: 'calc(50% + 78px)', top: '34%', width: 'min(280px, 42vw)', padding: '18px 18px 24px', borderRadius: 26 }}>
+      <p className="text-sm leading-5">Jeg gemmer kun et nødvendigt samtykkevalg. Statistik og reklame er slået fra. Du kan sige nej uden at miste siden.</p>
       <div className="mt-3 flex gap-2">
-        <button className="rounded-full px-3 py-1 text-sm" style={{ background: '#f0c070', color: '#163821' }} onClick={() => save('all')}>Acceptér</button>
-        <button className="rounded-full px-3 py-1 text-sm" style={{ border: '1px solid rgba(255,253,247,.4)' }} onClick={() => save('necessary')}>Kun nødvendige</button>
+        <button className="rounded-full px-3 py-1 text-sm" style={{ background: '#163821', color: '#fffdf7' }} onClick={() => save('all')}>Acceptér</button>
+        <button className="rounded-full px-3 py-1 text-sm" style={{ border: '1px solid rgba(22,56,33,.35)' }} onClick={() => save('necessary')}>Kun nødvendige</button>
       </div>
       <button className="mt-2 text-xs underline" onClick={() => onOpen('cookies')}>Læs om cookies</button>
     </div>
