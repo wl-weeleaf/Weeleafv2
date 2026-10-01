@@ -3,6 +3,7 @@ import useLeafyUi from '../../store/leafyUi'
 import { startDictation } from '../leafy/Dictation'
 import { LeafySpeech } from '../leafy/LeafySpeech'
 import { streamCorti } from '../../lib/livi/corti'
+import { detectLanguage, t } from '../../lib/i18n'
 import './leafyChat.css'
 
 export default function LeafyChatBar() {
@@ -10,6 +11,8 @@ export default function LeafyChatBar() {
   const closeChat = useLeafyUi((s) => s.closeChat)
   const setSpeaking = useLeafyUi((s) => s.setSpeaking)
   const setViseme = useLeafyUi((s) => s.setViseme)
+  const setLanguage = useLeafyUi((s) => s.setLanguage)
+  const language = useLeafyUi((s) => s.language)
   const abort = useRef(null)
   const dictation = useRef(null)
   const speech = useRef(null)
@@ -18,7 +21,7 @@ export default function LeafyChatBar() {
   const [input, setInput] = useState('')
   const [pending, setPending] = useState(false)
   const [listening, setListening] = useState(false)
-  const [bubble, setBubble] = useState('Hvad skal vi finde på i dag?')
+  const [bubble, setBubble] = useState(t('da', 'bubble'))
   const [error, setError] = useState('')
   const [messages, setMessages] = useState([])
 
@@ -26,6 +29,10 @@ export default function LeafyChatBar() {
     speech.current = new LeafySpeech(setSpeaking, setViseme, setError)
     return () => speech.current?.cancel()
   }, [setSpeaking, setViseme])
+
+  useEffect(() => {
+    if (!messages.length) setBubble(t(language, 'bubble'))
+  }, [language, messages.length])
 
   useEffect(() => {
     threadRef.current?.scrollTo(0, threadRef.current.scrollHeight)
@@ -46,6 +53,8 @@ export default function LeafyChatBar() {
     e.preventDefault()
     const text = input.trim()
     if (!text || pending) return
+    const heard = detectLanguage(text)
+    if (heard) setLanguage(heard)
     stop()
     const generation = seq.current
     const controller = new AbortController()
@@ -55,7 +64,7 @@ export default function LeafyChatBar() {
     setError('')
     setPending(true)
     setMessages(history)
-    setBubble('Leafy tænker…')
+    setBubble(t(heard || language, 'thinking'))
     try {
       const answer = await streamCorti({
         messages: history,
@@ -71,7 +80,7 @@ export default function LeafyChatBar() {
     } catch (err) {
       if (generation === seq.current && err.name !== 'AbortError') {
         setError(err.message || 'Corti kunne ikke svare.')
-        setBubble('Jeg hørte dig, men Corti sendte ingen tekst.')
+        setBubble(t(language, 'read'))
       }
     } finally {
       if (generation === seq.current) setPending(false)
@@ -101,36 +110,24 @@ export default function LeafyChatBar() {
       {messages.length > 0 && (
         <div className="wl-room-thread" ref={threadRef}>
           {messages.map((m, i) => (
-            <div key={i} className={`wl-room-line ${m.role}`}>
-              {m.content}
-            </div>
+            <div key={i} className={`wl-room-line ${m.role}`}>{m.content}</div>
           ))}
         </div>
       )}
-      <div className="wl-room-bubble" aria-live="polite">
-        {bubble}
-      </div>
+      <div className="wl-room-bubble" aria-live="polite">{bubble}</div>
       {error && <p className="wl-room-notice">{error}</p>}
       <form className="wl-room-composer" onSubmit={send}>
         <div className="wl-room-input">
-          <input
-            aria-label="Skriv til Leafy"
-            placeholder="Skriv til Leafy…"
-            value={input}
-            maxLength={6000}
-            onChange={(e) => setInput(e.target.value)}
-          />
-          <button type="submit" disabled={!input.trim() || pending} aria-label="Send">
-            ↑
-          </button>
+          <input aria-label={t(language, 'placeholder')} placeholder={t(language, 'placeholder')} value={input} maxLength={6000} onChange={(e) => setInput(e.target.value)} />
+          <button type="submit" disabled={!input.trim() || pending} aria-label={t(language, 'send')}>{'\u2191'}</button>
         </div>
         <button className="wl-room-talk" type="button" onClick={microphone} aria-pressed={listening}>
-          <i>{listening ? '■' : '●'}</i>
-          <span>{listening ? 'Stop' : 'Tal'}</span>
+          <i>{listening ? '\u25a0' : '\u25cf'}</i>
+          <span>{listening ? t(language, 'stop') : t(language, 'talk')}</span>
         </button>
         <button className="wl-room-talk" type="button" onClick={closeChat}>
-          <i>×</i>
-          <span>Luk</span>
+          <i>{'\u00d7'}</i>
+          <span>{t(language, 'close')}</span>
         </button>
       </form>
     </div>
