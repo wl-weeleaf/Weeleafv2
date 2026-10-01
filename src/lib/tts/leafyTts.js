@@ -1,6 +1,6 @@
-const TTS = 'http://127.0.0.1:8787/api/leafy/speak'
+const TTS = '/leafy-tts/speak'
 
-export async function speakWithKokoro({ text, emotion = 'curious', speed = 0.96 }) {
+export async function speakWithKokoro({ text, emotion = 'curious', speed = 0.82 }) {
   const response = await fetch(TTS, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
