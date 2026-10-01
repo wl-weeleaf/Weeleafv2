@@ -48,8 +48,8 @@ export default function App() {
     })
     const onLeafy = () => setBoot((s) => ({ ...s, leafy: true }))
     window.addEventListener('leafy-ready', onLeafy)
-    const backup = window.setTimeout(onLeafy, 22000)
-    const extra = window.setTimeout(() => setHold(false), 10000)
+    const backup = window.setTimeout(onLeafy, 5000)
+    const extra = window.setTimeout(() => setHold(false), 5000)
     return () => {
       window.removeEventListener('leafy-ready', onLeafy)
       window.clearTimeout(backup)
