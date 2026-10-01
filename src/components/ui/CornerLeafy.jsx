@@ -4,7 +4,6 @@ import { LayeredLeafyNPC } from '../leafy/LayeredLeafyNPC'
 import useStore from '../../store/useStore'
 import useLeafyUi from '../../store/leafyUi'
 import { LeafySpeech } from '../leafy/LeafySpeech'
-import LeafyChatBar from './LeafyChatBar'
 import './leafyChat.css'
 
 const mouse = { x: 0, y: 0 }
@@ -53,7 +52,7 @@ function modalText(coin) {
     if (section.heading) bits.push(section.heading)
     if (section.text) bits.push(section.text)
   }
-  return bits.filter(Boolean).join('. ').replace(/\s+/g, ' ').slice(0, 700)
+  return bits.filter(Boolean).join('. ').replace(/\s+/g, ' ').slice(0, 420)
 }
 
 export default function CornerLeafy() {
@@ -92,23 +91,20 @@ export default function CornerLeafy() {
       const line = text || 'Jeg kan læse det her op for dig.'
       setBubble(line)
       speech.current?.speak(line)
-    }, 500)
+    }, 4600)
     return () => clearTimeout(read)
   }, [open, text, openChat])
 
   if (!open) return null
 
   return (
-    <div className="wl-corner is-landed" style={{ zIndex: 90 }}>
-      <div className="wl-room-bubble wl-glass wl-corner-bubble">{bubble || 'Jeg flyver derned…'}</div>
+    <div className="wl-corner" style={{ zIndex: 90 }}>
+      {bubble && <div className="wl-room-bubble wl-glass wl-corner-bubble">{bubble}</div>}
       <div className="wl-corner-stage" onClick={openChat} onDoubleClick={openMenu}>
         <Canvas camera={{ position: [0, 0.15, 3.4], fov: 35 }} gl={{ alpha: true, antialias: true }} style={{ width: 140, height: 150, background: 'transparent' }}>
           <ambientLight intensity={1.1} />
           <SameLeafy />
         </Canvas>
-      </div>
-      <div className="wl-corner-chat">
-        <LeafyChatBar />
       </div>
     </div>
   )
