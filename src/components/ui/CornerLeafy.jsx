@@ -19,12 +19,10 @@ export default function CornerLeafy() {
   const open = useStore((s) => s.isModalOpen)
   const coin = useStore((s) => s.activeCoin)
   const openChat = useLeafyUi((s) => s.openChat)
-  const openMenu = useLeafyUi((s) => s.openMenu)
   const setSpeaking = useLeafyUi((s) => s.setSpeaking)
   const setViseme = useLeafyUi((s) => s.setViseme)
   const speech = useRef(null)
   const [bubble, setBubble] = useState('')
-  const [landed, setLanded] = useState(false)
   const text = useMemo(() => modalText(coin), [coin])
 
   useEffect(() => {
@@ -34,34 +32,26 @@ export default function CornerLeafy() {
 
   useEffect(() => {
     if (!open) {
-      setLanded(false)
       setBubble('')
       speech.current?.cancel()
       return
     }
     openChat()
-    const fly = setTimeout(() => setLanded(true), 40)
     const read = setTimeout(() => {
       const line = text || 'Jeg kan læse det her op for dig.'
       setBubble(line)
       speech.current?.speak(line)
     }, 700)
-    return () => {
-      clearTimeout(fly)
-      clearTimeout(read)
-    }
+    return () => clearTimeout(read)
   }, [open, text, openChat])
 
   if (!open) return null
 
   return (
-    <div className={`wl-corner ${landed ? 'is-landed' : ''}`}>
+    <div className="wl-corner is-landed">
       <div className="wl-room-bubble wl-corner-bubble">{bubble || 'Jeg flyver derned…'}</div>
-      <button className="wl-corner-leafy" onClick={openChat} onDoubleClick={openMenu} aria-label="Leafy">
-        <img src="/leafy/leafy.png" alt="" />
-      </button>
       <div className="wl-corner-chat">
-        <LeafyChatBar dock />
+        <LeafyChatBar />
       </div>
     </div>
   )
