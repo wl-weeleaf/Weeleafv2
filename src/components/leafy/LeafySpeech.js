@@ -1,22 +1,9 @@
 import { speakWithKokoro } from '../../lib/tts/leafyTts'
 
-const IDS = ['rest', 'MBP', 'AA', 'EE', 'OH', 'OO', 'FV', 'L']
-
 export function approximateVisemes(text) {
   return Array.from(String(text).toLowerCase()).map((c) =>
     /[mbp]/.test(c) ? 'MBP' : /[fv]/.test(c) ? 'FV' : /[auæå]/.test(c) ? 'AA' : /[ei]/.test(c) ? 'EE' : /[o]/.test(c) ? 'OH' : /[yøu]/.test(c) ? 'OO' : /[ltdnrs]/.test(c) ? 'L' : 'rest'
   )
-}
-
-function pickVoice() {
-  const voices = window.speechSynthesis?.getVoices?.() || []
-  const score = (v) => {
-    const n = `${v.lang} ${v.name}`.toLowerCase()
-    if (n.includes('da-dk') || n.includes('danish') || n.includes('dansk')) return 5
-    if (n.includes('en-gb')) return 2
-    return n.includes('en') ? 1 : 0
-  }
-  return [...voices].sort((a, b) => score(b) - score(a))[0] || null
 }
 
 export class LeafySpeech {
@@ -35,9 +22,9 @@ export class LeafySpeech {
     this.timer = null
     if (this.audio) {
       this.audio.pause()
+      this.audio.src = ''
       this.audio = null
     }
-    try { window.speechSynthesis?.cancel() } catch {}
     this.onState?.(false)
     this.onViseme?.('AA')
   }
@@ -59,27 +46,15 @@ export class LeafySpeech {
     }, step)
   }
 
-  browser(text, gen) {
-    if (!('speechSynthesis' in window)) return
-    const u = new SpeechSynthesisUtterance(text)
-    const voice = pickVoice()
-    if (voice) u.voice = voice
-    u.lang = voice?.lang || 'da-DK'
-    u.rate = 0.96
-    u.onstart = () => this.mouth(text, gen, Math.max(1200, text.length * 45))
-    u.onend = () => gen === this.generation && this.cancel()
-    window.speechSynthesis.resume()
-    window.speechSynthesis.speak(u)
-  }
-
   speak(text) {
     const clean = String(text || '').replace(/\s+/g, ' ').trim()
     if (!clean) return
     this.cancel()
     const gen = this.generation
-    speakWithKokoro({ text: clean, language: 'da', emotion: 'curious', speed: 0.96 })
+    speakWithKokoro({ text: clean, emotion: 'curious', speed: 0.96 })
       .then((blob) => {
         if (gen !== this.generation) return
+        if (!blob || blob.size < 1000) throw new Error('tom lyd')
         const url = URL.createObjectURL(blob)
         const audio = new Audio(url)
         this.audio = audio
@@ -88,11 +63,11 @@ export class LeafySpeech {
           URL.revokeObjectURL(url)
           if (gen === this.generation) this.cancel()
         }
-        audio.onerror = () => this.browser(clean, gen)
-        audio.play().catch(() => this.browser(clean, gen))
+        audio.onerror = () => this.onError?.('Stemmen kunne ikke afspilles. Teksten vises stadig.')
+        return audio.play()
       })
       .catch(() => {
-        if (gen === this.generation) this.browser(clean, gen)
+        if (gen === this.generation) this.onError?.('Dansk stemme svarede ikke. Teksten vises stadig.')
       })
   }
 }
