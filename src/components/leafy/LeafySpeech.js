@@ -16,10 +16,6 @@ export class LeafySpeech {
     this.audio = new Audio()
   }
 
-  unlock() {
-    this.audio.play().catch(() => {})
-  }
-
   cancel() {
     this.generation += 1
     if (this.timer) clearInterval(this.timer)
@@ -46,27 +42,27 @@ export class LeafySpeech {
     }, step)
   }
 
+  playUrl(url, text, gen) {
+    this.audio.src = url
+    this.audio.onplay = () => this.mouth(text, gen, (this.audio.duration || 4) * 1000)
+    this.audio.onended = () => gen === this.generation && this.cancel()
+    return this.audio.play()
+  }
+
   speak(text) {
     const clean = String(text || '').replace(/\s+/g, ' ').trim()
     if (!clean) return
-    this.unlock()
+    this.audio.play().catch(() => {})
     this.cancel()
     const gen = this.generation
     speakWithKokoro({ text: clean, emotion: 'curious', speed: 0.82 })
       .then((blob) => {
-        if (gen !== this.generation) return
-        if (!blob || blob.size < 1000) throw new Error('tom lyd')
-        const url = URL.createObjectURL(blob)
-        this.audio.src = url
-        this.audio.onplay = () => this.mouth(clean, gen, (this.audio.duration || 4) * 1000)
-        this.audio.onended = () => {
-          URL.revokeObjectURL(url)
-          if (gen === this.generation) this.cancel()
-        }
-        return this.audio.play()
+        if (gen !== this.generation || !blob || blob.size < 1000) throw new Error('tom lyd')
+        return this.playUrl(URL.createObjectURL(blob), clean, gen)
       })
-      .catch((err) => {
-        if (gen === this.generation) this.onError?.(String(err.message || err).slice(0, 180))
+      .catch(() => {
+        if (gen !== this.generation) return
+        this.playUrl('/leafy-voice.wav', clean, gen).catch(() => this.onError?.('Stemmeserveren kører ikke. Lad start-vinduet stå åbent.'))
       })
   }
 }
