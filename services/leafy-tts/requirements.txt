@@ -3,3 +3,4 @@ uvicorn==0.34.0
 numpy==2.2.1
 soundfile==0.13.1
 kokoro-onnx==0.4.7
+piper-tts==1.2.0
