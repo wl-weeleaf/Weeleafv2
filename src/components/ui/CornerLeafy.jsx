@@ -7,6 +7,8 @@ import { LeafySpeech } from '../leafy/LeafySpeech'
 import LeafyChatBar from './LeafyChatBar'
 import './leafyChat.css'
 
+const mouse = { x: 0, y: 0 }
+
 function SameLeafy() {
   const npcRef = useRef(null)
   const [ready, setReady] = useState(false)
@@ -15,7 +17,6 @@ function SameLeafy() {
   const motion = useLeafyUi((s) => s.motion)
   const speaking = useLeafyUi((s) => s.speaking)
   const viseme = useLeafyUi((s) => s.viseme)
-  const pointer = useRef({ x: 0, y: 0 })
 
   useEffect(() => {
     let cancelled = false
@@ -30,17 +31,16 @@ function SameLeafy() {
     return () => { cancelled = true }
   }, [])
 
-  useFrame((state, dt) => {
+  useFrame((_, dt) => {
     const npc = npcRef.current
     if (!npc) return
-    pointer.current = state.pointer
-    npc.update(Math.min(dt, 0.05), pointer.current, follow, 'idle', speaking ? 'speaking' : 'attentive', blink, follow, motion)
+    npc.update(Math.min(dt, 0.05), mouse, true, 'idle', speaking ? 'speaking' : 'attentive', blink, follow, motion)
     npc.setMouth(speaking ? viseme : 'AA')
   })
 
   if (!ready || !npcRef.current) return null
   return (
-    <group position={[0, -0.15, 0]} scale={0.85}>
+    <group position={[0, -0.2, 0]} scale={0.42}>
       <primitive object={npcRef.current.model} />
     </group>
   )
@@ -68,6 +68,15 @@ export default function CornerLeafy() {
   const text = useMemo(() => modalText(coin), [coin])
 
   useEffect(() => {
+    const onMove = (e) => {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1
+      mouse.y = -((e.clientY / window.innerHeight) * 2 - 1)
+    }
+    window.addEventListener('pointermove', onMove)
+    return () => window.removeEventListener('pointermove', onMove)
+  }, [])
+
+  useEffect(() => {
     speech.current = new LeafySpeech(setSpeaking, setViseme, () => {})
     return () => speech.current?.cancel()
   }, [setSpeaking, setViseme])
@@ -93,7 +102,7 @@ export default function CornerLeafy() {
     <div className="wl-corner is-landed" style={{ zIndex: 90 }}>
       <div className="wl-room-bubble wl-corner-bubble">{bubble || 'Jeg flyver derned…'}</div>
       <div className="wl-corner-stage" onClick={openChat} onDoubleClick={openMenu}>
-        <Canvas camera={{ position: [0, 0.2, 4.2], fov: 35 }} gl={{ alpha: true, antialias: true }} style={{ width: 220, height: 240, background: 'transparent' }}>
+        <Canvas camera={{ position: [0, 0.15, 3.4], fov: 35 }} gl={{ alpha: true, antialias: true }} style={{ width: 140, height: 150, background: 'transparent' }}>
           <ambientLight intensity={1.1} />
           <SameLeafy />
         </Canvas>
