@@ -18,33 +18,13 @@ function cutout(image, x, y, w, h) {
   const c = canvas(w, h)
   const g = c.getContext('2d')
   g.drawImage(image, x, y, w, h, 0, 0, w, h)
-  return c
-}
-function sample(image) {
-  const c = canvas(40, 40)
-  const g = c.getContext('2d')
-  g.drawImage(image, 210, 380, 70, 70, 0, 0, 40, 40)
-  const d = g.getImageData(0, 0, 40, 40).data
-  let r = 0, gr = 0, b = 0, n = 0
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] < 30) continue
-    r += d[i]; gr += d[i + 1]; b += d[i + 2]; n++
-  }
-  return n ? [r / n, gr / n, b / n] : [120, 190, 70]
-}
-function harmonize(source, target, strength) {
-  const c = canvas(source.width, source.height)
-  const g = c.getContext('2d')
-  g.drawImage(source, 0, 0)
-  const img = g.getImageData(0, 0, c.width, c.height)
-  const d = img.data
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] < 12) continue
-    d[i] = d[i] * (1 - strength) + target[0] * strength
-    d[i + 1] = d[i + 1] * (1 - strength) + target[1] * strength
-    d[i + 2] = d[i + 2] * (1 - strength) + target[2] * strength
-  }
-  g.putImageData(img, 0, 0)
+  g.globalCompositeOperation = 'destination-in'
+  g.scale(w / 2, h / 2)
+  const mask = g.createRadialGradient(1, 1, 0.9, 1, 1, 1)
+  mask.addColorStop(0, 'white')
+  mask.addColorStop(1, 'transparent')
+  g.fillStyle = mask
+  g.fillRect(0, 0, 2, 2)
   return c
 }
 
@@ -59,16 +39,21 @@ export class FaceSpriteLayers {
     this.browKey = ''
     this.mouthKey = ''
     this.roll = 0
-    const leaf = sample(clean)
     const b = this.baseCanvas.getContext('2d')
     b.drawImage(original, 0, 0)
-    for (const [x, y, w, h] of [[113, 219, 106, 114], [261, 221, 106, 114], [129, 167, 75, 57], [275, 165, 86, 62], [174, 315, 127, 77]]) {
+    for (const [x, y, w, h] of [
+      [113, 219, 106, 114],
+      [261, 221, 106, 114],
+      [129, 167, 75, 57],
+      [275, 165, 86, 62],
+      [174, 315, 127, 77],
+    ]) {
       b.drawImage(cutout(clean, x, y, w, h), x, y)
     }
     this.eyeParts = [cutout(original, 120, 226, 92, 100), cutout(original, 268, 228, 92, 100)]
     this.pupils = [cutout(original, 149, 247, 54, 67), cutout(original, 277, 249, 58, 65)]
-    this.browParts = [harmonize(cutout(original, 136, 174, 61, 43), leaf, 0.45), harmonize(cutout(original, 282, 172, 72, 48), leaf, 0.45)]
-    this.smile = harmonize(cutout(original, 184, 325, 107, 57), leaf, 0.55)
+    this.browParts = [cutout(original, 136, 174, 61, 43), cutout(original, 282, 172, 72, 48)]
+    this.smile = cutout(original, 184, 325, 107, 57)
     this.base = texture(this.baseCanvas, 'Original_torso_skin')
     this.eyes = texture(this.eyeCanvas, 'Original_eyes')
     this.brows = texture(this.browCanvas, 'Original_brows')
@@ -77,7 +62,10 @@ export class FaceSpriteLayers {
     this.setBrows('idle', false)
     this.setMouth('AA')
   }
-  setEyeRoll(roll) { this.roll = roll; this.eyeKey = '' }
+  setEyeRoll(roll) {
+    this.roll = roll
+    this.eyeKey = ''
+  }
   setEyes(x, y, open) {
     x = Math.round(x * 20) / 20
     y = Math.round(y * 20) / 20
@@ -91,17 +79,29 @@ export class FaceSpriteLayers {
       const g = this.scratch.getContext('2d')
       this.scratch.width = 92
       this.scratch.height = 100
-      g.clearRect(0, 0, 92, 100)
       g.drawImage(part, 0, 0)
       if (x !== 0 || y !== 0) {
         g.save()
         g.beginPath()
         g.ellipse(46, 51, 35, 40, 0, 0, Math.PI * 2)
         g.clip()
-        g.fillStyle = '#e7f6c8'
+        const white = g.createRadialGradient(43, 44, 7, 46, 51, 44)
+        white.addColorStop(0, '#f9ffe9')
+        white.addColorStop(1, '#c5e1ad')
+        g.fillStyle = white
         g.fillRect(5, 8, 82, 87)
         g.drawImage(this.pupils[i], i === 0 ? 29 + x * 9 : 9 + x * 9, 21 - y * 8)
         g.restore()
+      }
+      if (open < 0.14) {
+        ctx.strokeStyle = '#123607'
+        ctx.lineWidth = 3
+        ctx.lineCap = 'round'
+        ctx.beginPath()
+        ctx.moveTo(141 + i * 148, 277)
+        ctx.quadraticCurveTo(167 + i * 148, 289, 191 + i * 148, 277)
+        ctx.stroke()
+        return
       }
       const h = 100 * open
       ctx.save()
@@ -131,7 +131,7 @@ export class FaceSpriteLayers {
     const c = this.mouthCanvas.getContext('2d')
     c.clearRect(0, 0, 512, 512)
     if (id !== 'none') {
-      const h = [18, 24, 34, 46, 57][level[id] ?? 4]
+      const h = [8, 20, 33, 45, 57][level[id] ?? 4]
       c.drawImage(this.smile, 184, 352 - h / 2, 107, h)
     }
     this.mouth.needsUpdate = true
