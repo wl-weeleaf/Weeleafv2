@@ -6,6 +6,7 @@ import SceneTransition from './components/ui/SceneTransition'
 import ScrollHint from './components/ui/ScrollHint'
 import HUD from './components/ui/HUD'
 import LeafyMenu from './components/ui/LeafyMenu'
+import CornerLeafy from './components/ui/CornerLeafy'
 import { deferNonCritical } from './hooks/useLiteGraphics'
 import { preloadCoinImages } from './utils/textureCache'
 
@@ -14,19 +15,11 @@ const Modal = lazy(() => import('./components/ui/Modal'))
 
 function LoadingScreen() {
   return (
-    <div
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center"
-      style={{ background: 'linear-gradient(135deg, #050f08 0%, #0a1f10 50%, #061209 100%)' }}
-    >
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center" style={{ background: 'linear-gradient(135deg, #050f08 0%, #0a1f10 50%, #061209 100%)' }}>
       <div className="text-center space-y-5">
         <div className="relative mx-auto h-20 w-20">
-          <div
-            className="absolute inset-0 animate-spin rounded-full border-2"
-            style={{ borderColor: 'rgba(74,222,128,0.15)', borderTopColor: '#4ade80' }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xs font-bold tracking-widest text-green-400">WL</span>
-          </div>
+          <div className="absolute inset-0 animate-spin rounded-full border-2" style={{ borderColor: 'rgba(74,222,128,0.15)', borderTopColor: '#4ade80' }} />
+          <div className="absolute inset-0 flex items-center justify-center"><span className="text-xs font-bold tracking-widest text-green-400">WL</span></div>
         </div>
         <div className="font-display text-2xl tracking-[0.18em] text-white">WeeLeaf</div>
       </div>
@@ -52,14 +45,7 @@ export default function App() {
   return (
     <div className="relative h-screen w-screen overflow-hidden select-none">
       <MainSceneBackground paused={isModalOpen} />
-      <div
-        className="absolute inset-0 z-10"
-        style={{
-          opacity: sceneVisible ? 1 : 0,
-          pointerEvents: isModalOpen ? 'none' : 'auto',
-          transition: 'opacity 0.4s ease-out',
-        }}
-      >
+      <div className="absolute inset-0 z-10" style={{ opacity: sceneVisible ? 1 : 0, pointerEvents: isModalOpen ? 'none' : 'auto', transition: 'opacity 0.4s ease-out' }}>
         <Suspense fallback={<LoadingScreen />}>
           <Scene />
         </Suspense>
@@ -69,6 +55,7 @@ export default function App() {
       <SceneTransition />
       <ModalSceneBackground />
       <LeafyMenu />
+      <CornerLeafy />
       <Suspense fallback={null}>
         <Modal />
       </Suspense>
