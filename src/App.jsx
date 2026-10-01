@@ -17,7 +17,10 @@ const Modal = lazy(() => import('./components/ui/Modal'))
 function LoadingScreen({ label }) {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center" style={{ background: 'linear-gradient(135deg, #050f08 0%, #0a1f10 50%, #061209 100%)' }}>
-      <img src="/wl-logo.png" alt="WeeLeaf" className="h-28 w-28 animate-pulse rounded-full" />
+      <div className="relative h-40 w-40">
+        <img src="/wl-logo.svg" alt="WeeLeaf" className="h-full w-full" />
+        <div className="absolute animate-spin rounded-full" style={{ inset: '4.5%', border: '3px solid rgba(240,192,112,.18)', borderTopColor: '#f6e7a8' }} />
+      </div>
       <div className="mt-5 font-display text-2xl tracking-[0.18em] text-white">WeeLeaf</div>
       <div className="mt-2 text-sm text-green-200">{label}</div>
     </div>
@@ -39,7 +42,11 @@ export default function App() {
     })
     const onLeafy = () => setBoot((s) => ({ ...s, leafy: true }))
     window.addEventListener('leafy-ready', onLeafy)
-    return () => window.removeEventListener('leafy-ready', onLeafy)
+    const backup = window.setTimeout(onLeafy, 12000)
+    return () => {
+      window.removeEventListener('leafy-ready', onLeafy)
+      window.clearTimeout(backup)
+    }
   }, [])
 
   return (
