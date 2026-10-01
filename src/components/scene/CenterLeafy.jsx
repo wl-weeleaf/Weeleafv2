@@ -5,7 +5,7 @@ import { LayeredLeafyNPC } from '../leafy/LayeredLeafyNPC'
 import { CameraGaze } from '../leafy/CameraGaze'
 import useLeafyUi from '../../store/leafyUi'
 import { orbitState } from '../../data/orbitState'
-import { ORBIT_HEIGHT, ORBIT_RADIUS } from '../../data/coinData'
+import { ORBIT_HEIGHT } from '../../data/coinData'
 import useStore from '../../store/useStore'
 
 const PASSES = 10
@@ -89,21 +89,8 @@ export default function CenterLeafy() {
     prevFront.current = inFront
     setOrbitProgress(passes.current / PASSES)
 
-    let look = null
-    let best = 0.82
-    for (const coin of coins) {
-      const a = (((coin.angle || 0) + orbitState.angle) * Math.PI) / 180
-      const dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a))
-      const d = dir.dot(camDir)
-      if (d > best) {
-        best = d
-        look = new THREE.Vector3(Math.cos(a) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(a) * ORBIT_RADIUS)
-      }
-    }
-
     let lift = 0
     let spin = 0
-    let squash = 1
     if (eyeRoll.current >= 0) {
       eyeRoll.current += dt
       const p = Math.min(1, eyeRoll.current / 0.9)
@@ -117,22 +104,20 @@ export default function CenterLeafy() {
     if (spinTime.current >= 0) {
       spinTime.current += dt
       const p = Math.min(1, spinTime.current / 1.6)
-      const b = ballBounce(p)
-      lift = b * 1.15
-      squash = 1 - b * 0.12
+      lift = ballBounce(p) * 1.15
       spin = Math.PI * 2 * (p * p * (3 - 2 * p))
       if (p === 1) spinTime.current = -1
     }
     group.position.y = baseY + lift
     group.rotation.y = spin
-    group.scale.set(scale * (2 - squash), scale * squash, scale)
+    group.scale.setScalar(scale)
 
     const camPoint = gazeRef.current?.point
     if (camPoint) pointer.current.set(camPoint.x, camPoint.y)
-    else if (look) pointer.current.set(THREE.MathUtils.clamp(look.x / ORBIT_RADIUS, -1, 1), 0.05)
     else pointer.current.set(state.pointer.x, state.pointer.y)
 
-    npc.update(dt, pointer.current, follow || Boolean(camPoint) || Boolean(look), 'idle', speaking ? 'speaking' : chatOpen ? 'attentive' : 'idle', blink, true, motion)
+    const active = follow && (Math.abs(state.pointer.x) > 0.02 || Math.abs(state.pointer.y) > 0.02 || Boolean(camPoint))
+    npc.update(dt, pointer.current, active, 'idle', speaking ? 'speaking' : chatOpen ? 'attentive' : 'idle', blink, follow || Boolean(camPoint), motion)
     npc.setMouth(speaking ? viseme : 'AA')
     npc.setAccessories(false, false)
     npc.orientAccessories(camera.position)
