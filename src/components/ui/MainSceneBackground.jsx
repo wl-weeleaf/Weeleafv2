@@ -1,16 +1,17 @@
-import SoftClouds from './SoftClouds'
-
-/** Main-page backdrop — CSS sunset sky and soft drifting clouds. */
+/** Main-page backdrop — sunrise community image. */
 export default function MainSceneBackground({ paused = false }) {
   return (
     <div className="fixed inset-0 z-0" aria-hidden>
-      <SoftClouds paused={paused} className="absolute inset-0" />
+      <img
+        src="/scene-bg.jpg"
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+        style={paused ? { filter: 'saturate(0.9)' } : undefined}
+      />
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          zIndex: 3,
-          background:
-            'radial-gradient(ellipse 90% 75% at 50% 50%, transparent 42%, rgba(180, 110, 60, 0.08) 100%)',
+          background: 'linear-gradient(180deg, rgba(255,220,170,0.08), rgba(20,10,6,0.18))',
         }}
       />
     </div>
