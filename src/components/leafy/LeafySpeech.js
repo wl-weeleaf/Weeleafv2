@@ -1,7 +1,5 @@
 import { speakWithKokoro } from '../../lib/tts/leafyTts'
 
-const GREETING = /hej, jeg er leafy/i
-
 export function approximateVisemes(text) {
   return Array.from(String(text).toLowerCase()).map((c) =>
     /[mbp]/.test(c) ? 'MBP' : /[fv]/.test(c) ? 'FV' : /[auæå]/.test(c) ? 'AA' : /[ei]/.test(c) ? 'EE' : /[o]/.test(c) ? 'OH' : /[yøu]/.test(c) ? 'OO' : /[ltdnrs]/.test(c) ? 'L' : 'rest'
@@ -15,18 +13,18 @@ export class LeafySpeech {
     this.onError = onError
     this.generation = 0
     this.timer = null
-    this.audio = null
+    this.audio = new Audio()
+  }
+
+  unlock() {
+    this.audio.play().catch(() => {})
   }
 
   cancel() {
     this.generation += 1
     if (this.timer) clearInterval(this.timer)
     this.timer = null
-    if (this.audio) {
-      this.audio.pause()
-      this.audio.src = ''
-      this.audio = null
-    }
+    this.audio.pause()
     this.onState?.(false)
     this.onViseme?.('AA')
   }
@@ -48,33 +46,27 @@ export class LeafySpeech {
     }, step)
   }
 
-  playBlob(blob, text, gen) {
-    const url = URL.createObjectURL(blob)
-    const audio = new Audio(url)
-    this.audio = audio
-    audio.onplay = () => this.mouth(text, gen, (audio.duration || 4) * 1000)
-    audio.onended = () => {
-      URL.revokeObjectURL(url)
-      if (gen === this.generation) this.cancel()
-    }
-    return audio.play()
-  }
-
   speak(text) {
     const clean = String(text || '').replace(/\s+/g, ' ').trim()
     if (!clean) return
+    this.unlock()
     this.cancel()
     const gen = this.generation
-    const voiceFile = GREETING.test(clean) ? fetch('/leafy-voice.mp3').then((r) => r.ok ? r.blob() : Promise.reject()) : Promise.reject()
-    voiceFile
-      .catch(() => speakWithKokoro({ text: clean, emotion: 'curious', speed: 0.82 }))
+    speakWithKokoro({ text: clean, emotion: 'curious', speed: 0.82 })
       .then((blob) => {
         if (gen !== this.generation) return
         if (!blob || blob.size < 1000) throw new Error('tom lyd')
-        return this.playBlob(blob, clean, gen)
+        const url = URL.createObjectURL(blob)
+        this.audio.src = url
+        this.audio.onplay = () => this.mouth(clean, gen, (this.audio.duration || 4) * 1000)
+        this.audio.onended = () => {
+          URL.revokeObjectURL(url)
+          if (gen === this.generation) this.cancel()
+        }
+        return this.audio.play()
       })
       .catch((err) => {
-        if (gen === this.generation) this.onError?.(err.message || 'Dansk stemme svarede ikke')
+        if (gen === this.generation) this.onError?.(String(err.message || err).slice(0, 180))
       })
   }
 }
