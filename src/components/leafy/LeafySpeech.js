@@ -63,11 +63,10 @@ export class LeafySpeech {
           URL.revokeObjectURL(url)
           if (gen === this.generation) this.cancel()
         }
-        audio.onerror = () => this.onError?.('Stemmen kunne ikke afspilles. Teksten vises stadig.')
         return audio.play()
       })
-      .catch(() => {
-        if (gen === this.generation) this.onError?.('Dansk stemme svarede ikke. Teksten vises stadig.')
+      .catch((err) => {
+        if (gen === this.generation) this.onError?.(err.message || 'Dansk stemme svarede ikke')
       })
   }
 }
