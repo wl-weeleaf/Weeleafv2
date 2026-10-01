@@ -24,7 +24,7 @@ $env:PIPER_EXE = $piperExe.FullName
 $env:PIPER_DA_MODEL = $piper
 $data = Join-Path $piperExe.DirectoryName 'espeak-ng-data'
 Set-Content -Path 'models\test.txt' -Value 'Hej, jeg er Leafy' -Encoding utf8
-& $piperExe.FullName --model $piper --output_file 'models\test.wav' --espeak_data $data --debug < 'models\test.txt'
+Get-Content 'models\test.txt' -Raw | & $piperExe.FullName --model $piper --output_file 'models\test.wav' --espeak_data $data --debug
 if (-not (Test-Path 'models\test.wav')) { Write-Host 'Piper lavede ingen testlyd'; exit 1 }
 Write-Host 'Dansk testlyd er klar'
 & $venv -m uvicorn app:app --host 127.0.0.1 --port 8787
