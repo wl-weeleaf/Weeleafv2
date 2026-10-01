@@ -7,7 +7,6 @@ import { detectLanguage, t } from '../../lib/i18n'
 import './leafyChat.css'
 
 export default function LeafyChatBar() {
-  const chatOpen = useLeafyUi((s) => s.chatOpen)
   const closeChat = useLeafyUi((s) => s.closeChat)
   const setSpeaking = useLeafyUi((s) => s.setSpeaking)
   const setViseme = useLeafyUi((s) => s.setViseme)
@@ -16,6 +15,7 @@ export default function LeafyChatBar() {
   const abort = useRef(null)
   const dictation = useRef(null)
   const speech = useRef(null)
+  const stackRef = useRef(null)
   const seq = useRef(0)
   const [input, setInput] = useState('')
   const [pending, setPending] = useState(false)
@@ -23,6 +23,7 @@ export default function LeafyChatBar() {
   const [bubble, setBubble] = useState(t('da', 'bubble'))
   const [error, setError] = useState('')
   const [messages, setMessages] = useState([])
+  const [openThread, setOpenThread] = useState(false)
 
   useEffect(() => {
     speech.current = new LeafySpeech(setSpeaking, setViseme, setError)
@@ -98,33 +99,33 @@ export default function LeafyChatBar() {
     }
   }
 
-  if (!chatOpen) return null
+  function onStackWheel(e) {
+    stackRef.current?.scrollBy({ top: e.deltaY })
+  }
 
   return (
-    <div className="wl-leafy-stack">
-      <div className="wl-room-bottom">
-        <div className="wl-room-thread">
-          {messages.map((m, i) => (
-            <div key={i} className={`wl-room-line wl-glass ${m.role}`}>{m.content}</div>
-          ))}
-        </div>
-        <div className="wl-room-bubble wl-glass" aria-live="polite">{bubble}</div>
-        {error && <p className="wl-room-notice">{error}</p>}
-        <form className="wl-room-composer" onSubmit={send}>
-          <div className="wl-room-input wl-glass">
-            <input aria-label={t(language, 'placeholder')} placeholder={t(language, 'placeholder')} value={input} maxLength={6000} onChange={(e) => setInput(e.target.value)} />
-            <button type="submit" disabled={!input.trim() || pending} aria-label={t(language, 'send')}>{'↑'}</button>
-          </div>
-          <button className="wl-room-talk" type="button" onClick={microphone} aria-pressed={listening}>
-            <i>{listening ? '■' : '●'}</i>
-            <span>{listening ? t(language, 'stop') : t(language, 'talk')}</span>
-          </button>
-          <button className="wl-room-talk" type="button" onClick={closeChat}>
-            <i>{'×'}</i>
-            <span>{t(language, 'close')}</span>
-          </button>
-        </form>
+    <>
+      <div className="wl-leafy-stack" ref={stackRef} onWheel={onStackWheel}>
+        {messages.map((m, i) => (
+          <button key={i} type="button" className="wl-room-line wl-glass" onClick={() => setOpenThread(true)}>{m.content}</button>
+        ))}
+        <button type="button" className="wl-room-bubble wl-glass" onClick={() => setOpenThread(true)}>{bubble}</button>
       </div>
-    </div>
+      <form className="wl-chat-bar" onSubmit={send}>
+        <input aria-label={t(language, 'placeholder')} placeholder={t(language, 'placeholder')} value={input} maxLength={6000} onChange={(e) => setInput(e.target.value)} />
+        <button type="submit" disabled={!input.trim() || pending} aria-label={t(language, 'send')}>{'↑'}</button>
+        <button type="button" onClick={microphone} aria-pressed={listening}>{listening ? '■' : '●'}</button>
+        <button type="button" onClick={closeChat} aria-label={t(language, 'close')}>{'×'}</button>
+      </form>
+      {error && <p className="wl-room-notice wl-chat-error">{error}</p>}
+      {openThread && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-6" style={{ background: 'rgba(20,10,6,.35)' }} onClick={() => setOpenThread(false)}>
+          <article className="max-h-[70vh] w-full max-w-lg overflow-auto rounded-3xl p-5" style={{ background: 'rgba(255,253,247,.96)', color: '#163821' }} onClick={(e) => e.stopPropagation()}>
+            {messages.map((m, i) => <p key={i} className="mb-3 text-sm leading-6"><strong>{m.role === 'user' ? 'Dig' : 'Leafy'}:</strong> {m.content}</p>)}
+            <button className="rounded-full px-4 py-2 text-sm" style={{ background: '#163821', color: '#fffdf7' }} onClick={() => setOpenThread(false)}>Luk</button>
+          </article>
+        </div>
+      )}
+    </>
   )
 }
