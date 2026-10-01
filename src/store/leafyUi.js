@@ -11,6 +11,7 @@ const useLeafyUi = create((set) => ({
   speaking: false,
   viseme: 'AA',
   orbitProgress: 0,
+  language: 'da',
   openChat: () => set({ chatOpen: true, menuOpen: false }),
   closeChat: () => set({ chatOpen: false, speaking: false, viseme: 'AA' }),
   openMenu: () => set({ menuOpen: true, chatOpen: false }),
@@ -23,6 +24,7 @@ const useLeafyUi = create((set) => ({
   setSpeaking: (speaking) => set({ speaking }),
   setViseme: (viseme) => set({ viseme }),
   setOrbitProgress: (orbitProgress) => set({ orbitProgress }),
+  setLanguage: (language) => set({ language }),
 }))
 
 export default useLeafyUi
