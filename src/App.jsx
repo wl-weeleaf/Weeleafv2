@@ -1,7 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react'
 import useStore from './store/useStore'
 import MainSceneBackground from './components/ui/MainSceneBackground'
-import ModalSceneBackground from './components/ui/ModalSceneBackground'
 import ScrollHint from './components/ui/ScrollHint'
 import HUD from './components/ui/HUD'
 import LeafyMenu from './components/ui/LeafyMenu'
@@ -15,7 +14,6 @@ import { WL } from './styles/modalTheme'
 
 const Scene = lazy(() => import('./components/scene/Scene'))
 const Modal = lazy(() => import('./components/ui/Modal'))
-const OLD_POPUPS = new Set(['shop', 'community', 'member', 'login'])
 
 function LoadingScreen() {
   return (
@@ -31,10 +29,8 @@ function LoadingScreen() {
 
 export default function App() {
   const isModalOpen = useStore((s) => s.isModalOpen)
-  const activeCoin = useStore((s) => s.activeCoin)
   const sceneRevealPhase = useStore((s) => s.sceneRevealPhase)
   const sceneVisible = sceneRevealPhase === 'visible'
-  const oldPopup = isModalOpen && OLD_POPUPS.has(activeCoin?.id)
   const [boot, setBoot] = useState({ api: false, leafy: false })
   const [hold, setHold] = useState(true)
   const [legal, setLegal] = useState(null)
@@ -59,7 +55,7 @@ export default function App() {
   return (
     <div className="relative h-screen w-screen overflow-hidden select-none">
       <MainSceneBackground paused={!ready} />
-      <div className="absolute inset-0 z-10" style={{ opacity: ready && sceneVisible && !isModalOpen ? 1 : 0, pointerEvents: !ready || isModalOpen ? 'none' : 'auto' }}>
+      <div className="absolute inset-0 z-10" style={{ opacity: ready && sceneVisible ? 1 : 0, pointerEvents: !ready || isModalOpen ? 'none' : 'auto' }}>
         <Suspense fallback={null}>
           <Scene />
         </Suspense>
@@ -67,7 +63,6 @@ export default function App() {
         {ready && !isModalOpen && <ScrollHint />}
       </div>
       {!ready && <LoadingScreen />}
-      {ready && oldPopup && <ModalSceneBackground />}
       {ready && <LeafyMenu />}
       {ready && <Suspense fallback={null}><Modal /></Suspense>}
       {ready && <CornerLeafy />}
