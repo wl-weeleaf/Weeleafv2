@@ -7,6 +7,7 @@ import { detectLanguage, t } from '../../lib/i18n'
 import './leafyChat.css'
 
 export default function LeafyChatBar() {
+  const chatOpen = useLeafyUi((s) => s.chatOpen)
   const closeChat = useLeafyUi((s) => s.closeChat)
   const setSpeaking = useLeafyUi((s) => s.setSpeaking)
   const setViseme = useLeafyUi((s) => s.setViseme)
@@ -15,12 +16,11 @@ export default function LeafyChatBar() {
   const abort = useRef(null)
   const dictation = useRef(null)
   const speech = useRef(null)
-  const stackRef = useRef(null)
   const seq = useRef(0)
   const [input, setInput] = useState('')
   const [pending, setPending] = useState(false)
   const [listening, setListening] = useState(false)
-  const [bubble, setBubble] = useState(t('da', 'bubble'))
+  const [bubble, setBubble] = useState('')
   const [error, setError] = useState('')
   const [messages, setMessages] = useState([])
   const [openThread, setOpenThread] = useState(false)
@@ -29,10 +29,6 @@ export default function LeafyChatBar() {
     speech.current = new LeafySpeech(setSpeaking, setViseme, setError)
     return () => speech.current?.cancel()
   }, [setSpeaking, setViseme])
-
-  useEffect(() => {
-    if (!messages.length) setBubble(t(language, 'bubble'))
-  }, [language, messages.length])
 
   function stop() {
     seq.current++
@@ -60,7 +56,7 @@ export default function LeafyChatBar() {
     setError('')
     setPending(true)
     setMessages(history)
-    setBubble(t(heard || language, 'thinking'))
+    setBubble('')
     try {
       const answer = await streamCorti({
         messages: history,
@@ -76,7 +72,6 @@ export default function LeafyChatBar() {
     } catch (err) {
       if (generation === seq.current && err.name !== 'AbortError') {
         setError(err.message || 'Corti kunne ikke svare.')
-        setBubble(t(language, 'read'))
       }
     } finally {
       if (generation === seq.current) setPending(false)
@@ -99,18 +94,13 @@ export default function LeafyChatBar() {
     }
   }
 
-  function onStackWheel(e) {
-    stackRef.current?.scrollBy({ top: e.deltaY })
-  }
+  if (!chatOpen) return null
 
   return (
     <>
-      <div className="wl-leafy-stack" ref={stackRef} onWheel={onStackWheel}>
-        {messages.map((m, i) => (
-          <button key={i} type="button" className="wl-room-line wl-glass" onClick={() => setOpenThread(true)}>{m.content}</button>
-        ))}
-        <button type="button" className="wl-room-bubble wl-glass" onClick={() => setOpenThread(true)}>{bubble}</button>
-      </div>
+      {bubble && (
+        <button type="button" className="wl-room-bubble wl-glass wl-leafy-stack" onClick={() => setOpenThread(true)}>{bubble}</button>
+      )}
       <form className="wl-chat-bar" onSubmit={send}>
         <input aria-label={t(language, 'placeholder')} placeholder={t(language, 'placeholder')} value={input} maxLength={6000} onChange={(e) => setInput(e.target.value)} />
         <button type="submit" disabled={!input.trim() || pending} aria-label={t(language, 'send')}>{'↑'}</button>
