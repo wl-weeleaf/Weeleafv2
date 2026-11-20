@@ -1,0 +1,64 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: hostinger-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Ensure config.local.php is not in dist
+        run: |
+          if find dist -name 'config.local.php' | grep -q .; then
+            echo "::error::config.local.php found in dist/ — aborting deploy"
+            find dist -name 'config.local.php'
+            exit 1
+          fi
+
+      - name: Upload via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: 92.113.18.31
+          username: u769128625
+          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: /domains/weeleaf.com/public_html/
+
+      - name: Health check
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl -fsS https://weeleaf.com/api/health; then
+              echo; echo "Health check OK"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "::error::Health check failed"
+          exit 1
+
+      - name: Verify CLI scripts are not web-accessible
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' https://weeleaf.com/api/promote-admin-cli.php)
+          echo "promote-admin-cli.php returned HTTP $code"
+          if [ "$code" = "200" ]; then
+            echo "::error::promote-admin-cli.php is publicly reachable (HTTP 200)"
+            exit 1
+          fi
