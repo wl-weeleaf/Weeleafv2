@@ -16,7 +16,7 @@ function copyApi() {
     recursive: true,
     filter: (path) => {
       const rel = path.replace(/\\/g, '/')
-      if (rel.includes('config.local.php')) return false
+      if (rel.endsWith('/config.local.php')) return false
       return true
     },
   })

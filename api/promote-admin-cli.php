@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+
 /**
  * Promote an existing user to admin by email.
  *
@@ -11,7 +13,7 @@ declare(strict_types=1);
  */
 require __DIR__ . '/lib/bootstrap.php';
 
-$email = strtolower(trim($argv[1] ?? ($_GET['email'] ?? '')));
+$email = strtolower(trim($argv[1] ?? ''));
 if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
     echo json_encode(['ok' => false, 'error' => 'Usage: php promote-admin-cli.php user@example.com']) . PHP_EOL;
     exit(1);

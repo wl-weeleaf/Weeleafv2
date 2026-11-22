@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+
 require __DIR__ . '/lib/bootstrap.php';
 
 $coins = wl_get_config_key('coins', []);

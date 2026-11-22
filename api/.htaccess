@@ -1,3 +1,7 @@
+<FilesMatch "(-cli\.php|^router\.php|^seed-data\.php|^config\.local\.php.*)$">
+  Require all denied
+</FilesMatch>
+
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^ index.php [QSA,L]
