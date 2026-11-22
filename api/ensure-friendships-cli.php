@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
-
 /**
  * Create friendship tables if missing. Safe to run on every deploy.
  *
