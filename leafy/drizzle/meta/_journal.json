@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1791198218012,
+      "tag": "0000_minor_roughhouse",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791211555575,
+      "tag": "0001_chilly_gateway",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795041343325,
+      "tag": "0002_leafy_core",
+      "breakpoints": true
+    }
+  ]
+}

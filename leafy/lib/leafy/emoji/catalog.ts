@@ -1,0 +1,10 @@
+export type LeafyEmojiId='calm'|'happy'|'laugh'|'wink'|'love'|'thinking'|'curious'|'surprised'|'sad'|'sleepy'|'cool'|'celebrate'|'heart'|'star'|'thumb'|'check'|'idea'|'home'|'seed'|'tools'|'book'|'chat'|'world'|'together';
+export type LeafyEmojiEntry={id:LeafyEmojiId;reference:string;label:string;group:'leafy'|'coin'};
+export const LEAFY_EMOJIS:LeafyEmojiEntry[]=[
+ ['calm','🙂','Rolig'],['happy','😀','Glad'],['laugh','😂','Griner'],['wink','😉','Blinker'],['love','😍','Begejstret'],['thinking','🤔','Tænker'],['curious','🧐','Nysgerrig'],['surprised','😮','Overrasket'],['sad','😢','Ked af det'],['sleepy','😴','Søvnig'],['cool','😎','Cool'],['celebrate','🥳','Fejrer'],
+ ['heart','❤️','Omsorg'],['star','⭐','Stjerne'],['thumb','👍','Godt gået'],['check','✅','Færdig'],['idea','💡','Idé'],['home','🏠','Hjem'],['seed','🌱','Vækst'],['tools','🔧','Værktøj'],['book','📚','Læring'],['chat','💬','Samtale'],['world','🌍','Verden'],['together','🤝','Sammen']
+].map(([id,reference,label],i)=>({id:id as LeafyEmojiId,reference,label,group:i<12?'leafy':'coin'}));
+export function findEmoji(reference:string){return LEAFY_EMOJIS.find(e=>e.reference===reference||reference==='❤'&&e.id==='heart');}
+// Match whole graphemes, including skin tones, flags and joined emoji families.
+const segmenter=new Intl.Segmenter('da',{granularity:'grapheme'});
+export function emojiParts(text:string){const parts=Array.from(segmenter.segment(text),({segment})=>{const exact=findEmoji(segment);if(exact)return {text:segment,emoji:exact};if(!/\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3/u.test(segment))return {text:segment,emoji:undefined};const base=segment.replace(/[\uFE0F\uFE0E]/g,'').replace(/\p{Emoji_Modifier}/gu,'');const id=/[😀-🙏🤐-🫨]/u.test(base)?'happy':/[❤💖💕💗💙💚💛💜🖤🤍🤎🩷]/u.test(base)?'heart':/[🌱🌿🍃🌳🌲🌻🌷]/u.test(base)?'seed':/[👋👏🤝👍👐🙌]/u.test(base)?'together':'star';return {text:segment,emoji:findEmoji(base)||LEAFY_EMOJIS.find(e=>e.id===id)};});const result:typeof parts=[];for(const p of parts){const previous=result.at(-1);if(!p.emoji&&previous&&!previous.emoji)previous.text+=p.text;else result.push(p);}return result;}

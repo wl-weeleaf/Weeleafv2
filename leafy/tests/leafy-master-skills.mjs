@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import ts from 'typescript';
+const compile=async path=>import(`data:text/javascript;base64,${Buffer.from(ts.transpileModule(await readFile(new URL(path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText).toString('base64')}`);
+const {LOCKED_MASTER_SKILLS:skills}=await compile('../lib/livi/master-skills.ts');
+const {skillContext}=await compile('../lib/leafy/skill-context.ts');
+assert.equal(skills.length,10);
+assert(skills.every(skill=>skill.locked===true&&skill.instructions.length>500));
+assert.equal(skills.filter(skill=>skill.alwaysLoaded).length,2);
+assert(skills.every(skill=>skill.status==='draft_for_admin_review'));
+const hemp=skillContext(skills,'industrihamp, fiber, dyrkning, hampetekstiler');
+assert(hemp.includes('master-04_hemp'));
+assert(hemp.includes('master-00_governance'),'the locked core is discoverable through the skill catalog');
+assert(hemp.includes('låste Master Skills'));
+console.log('PASS: all 10 versioned Master Skills are locked; the governance and Leafy core are always loaded, and relevant modules are selected by topic.');

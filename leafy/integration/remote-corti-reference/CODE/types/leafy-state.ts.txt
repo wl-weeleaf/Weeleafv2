@@ -1,0 +1,16 @@
+export type LeafyState =
+  | "idle"
+  | "listening"
+  | "thinking"
+  | "observing"
+  | "acting"
+  | "speaking"
+  | "waiting_for_human"
+  | "error";
+
+export type ControlState =
+  | "AGENT_CONTROL"
+  | "HUMAN_CONTROL"
+  | "PROTECTED_HUMAN_CONTROL"
+  | "PAUSED"
+  | "DISCONNECTED";

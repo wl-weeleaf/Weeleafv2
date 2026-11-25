@@ -1,0 +1,9 @@
+{
+  "name": "leafy-desktop-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Leafy desktop widget for Windows, powered by the hosted Leafy app.",
+  "main": "main.cjs",
+  "scripts": { "start": "electron ." },
+  "devDependencies": { "electron": "^39.0.0" }
+}

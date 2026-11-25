@@ -1,0 +1,6 @@
+import OpenAI from "openai";
+
+export const corti = new OpenAI({
+  apiKey: process.env.CORTI_BEARER!,
+  baseURL: process.env.CORTI_BASE_URL ?? "https://ai.eu.corti.app/v1",
+});

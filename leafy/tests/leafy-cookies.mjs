@@ -1,0 +1,7 @@
+import assert from 'node:assert/strict';import vm from 'node:vm';import fs from 'node:fs';
+let password=false,container=true;const labels=['Reject all','Accept all','Delete all'];
+const buttons=labels.map(innerText=>({innerText,disabled:false,hidden:false,getClientRects:()=>[{}],getAttribute:()=>null,scrollIntoView(){},getBoundingClientRect:()=>({x:0,y:0,width:10,height:10}),closest:()=>container?{innerText:'We use cookies. Consent options.'}:null}));
+const ctx=vm.createContext({location:{hostname:'example.org',pathname:'/'},document:{body:{innerText:'Ordinary page'},querySelectorAll(selector){return selector.startsWith('button')?buttons:password?[{type:'password',hidden:false,getClientRects:()=>[{}],getAttribute:()=>null}]:[];}},getComputedStyle:()=>({visibility:'visible'}),crypto});
+vm.runInContext(fs.readFileSync('integration/chrome-extension/dom.js','utf8'),ctx);
+assert.equal(ctx.__leafyDOM.cookieCandidate('necessary').label,'Reject all');assert.equal(ctx.__leafyDOM.cookieCandidate('all').label,'Accept all');container=false;assert.equal(ctx.__leafyDOM.cookieCandidate('necessary'),null,'matching ordinary-page button is not a cookie action');container=true;password=true;assert.equal(ctx.__leafyDOM.cookieCandidate('necessary').protected,true);
+console.log('PASS: actual DOM cookie chooser selects explicit policy, never unrelated labels or ordinary page buttons, and stops at password fields.');

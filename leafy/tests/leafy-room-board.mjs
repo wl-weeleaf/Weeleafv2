@@ -1,0 +1,6 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import ts from 'typescript';
+const scene=await import('../features/leafy-live/services/sceneDirector.mjs');globalThis.__roomDirector=scene.directScene;
+const source=ts.transpile(fs.readFileSync('lib/leafy/room-board.ts','utf8'),{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}).replace(/^import .*;$/m,'const directScene=globalThis.__roomDirector;');
+const {needsBoard,roomBoardLayout}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+test('Short replies remain bubbles; long or structured explanations use the board',()=>{assert.equal(needsBoard('Hej Nicki!'),false);assert.equal(needsBoard('x'.repeat(351)),true);assert.equal(needsBoard('En forklaring. '.repeat(9),'Forklar hvordan Hive virker'),true);assert.equal(needsBoard('# Oversigt\n'+ 'Hamp. '.repeat(30)),true);assert.equal(needsBoard('Jeg tænker…','Forklar grundigt'),false);});
+test('Room board borrows Live content layout and reserves the right side for the same actor',()=>{const {board,actor}=roomBoardLayout(),live=scene.directScene({preset:'AUTO',presenterVisible:false,activeContent:true});assert.equal(actor.x,live.leafy.x+live.leafy.w/2);assert.ok(board.x+board.w<live.leafy.x);assert.ok(actor.x<1&&actor.x>.75);assert.ok(actor.scale>0&&actor.scale<1);});

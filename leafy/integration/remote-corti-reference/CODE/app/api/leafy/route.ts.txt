@@ -1,0 +1,13 @@
+import { NextRequest, NextResponse } from "next/server";
+import { runLeafy } from "@/lib/leafy-runtime";
+
+export async function POST(req: NextRequest) {
+  const body = await req.json();
+
+  const response = await runLeafy({
+    messages: body.messages ?? [],
+    environment: body.environment ?? {},
+  });
+
+  return NextResponse.json(response);
+}

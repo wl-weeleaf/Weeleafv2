@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import ts from 'typescript';
+const source=await fs.readFile(new URL('../lib/leafy/actions.ts',import.meta.url),'utf8');
+const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText;
+const {publicUrl,safeSvg,permissionFor,artifact}=await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
+assert.equal(publicUrl('https://www.weeleaf.com/').hostname,'www.weeleaf.com');
+for(const value of ['http://weeleaf.com','https://127.0.0.1','https://localhost','https://app.internal','https://[::1]','https://user:password@example.com','https://weeleaf.com:8080'])assert.throws(()=>publicUrl(value));
+assert.equal(permissionFor('browser_action',{action:'fill'}),'send');
+assert.equal(permissionFor('browser_action',{action:'click'}),'send');
+assert.equal(permissionFor('read_page',{}),'browser');
+assert.equal(permissionFor('create_media',{}),'create-media');
+assert.equal(permissionFor('set_interface_language',{language:'da'}),'interface-language');
+assert(safeSvg('<svg xmlns="http://www.w3.org/2000/svg"><circle cx="20" cy="20" r="10" fill="green"/></svg>'));
+for(const payload of ['<svg><script>alert(1)</script></svg>','<svg onload="alert(1)"></svg>','<svg><image href="https://evil.com/track"/></svg>','<svg><foreignObject>bad</foreignObject></svg>','<svg><path fill="url(https://evil.com)"/></svg>'])assert.throws(()=>safeSvg(payload));
+assert.throws(()=>artifact('empty.md','','text/markdown'));
+assert.equal(artifact('../test.md','Hello','text/markdown').name,'..-test.md');
+console.log('PASS: public URL guard, active SVG rejection and mandatory browser send approvals.');

@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {unzipSync} from 'fflate';
+
+const downloadDir='public/downloads';
+const expected=['leafy-chrome-extension.zip','leafy-pc-bridge.zip','leafy-browser-engine.zip','leafy-grok-project.zip','leafy-nextjs.zip','leafy-orb-integration.zip'];
+for(const name of expected)assert(fs.statSync(`${downloadDir}/${name}`).size>100,`${name} must be present and non-empty`);
+const extension=unzipSync(fs.readFileSync(`${downloadDir}/leafy-chrome-extension.zip`));
+const manifest=JSON.parse(new TextDecoder().decode(extension['leafy-chrome-extension/manifest.json']));
+assert(manifest.host_permissions.includes('https://leafy-0-1-live.bushy-flame-4467.chatgpt.site/*'));
+assert(extension['leafy-chrome-extension/background.js']);
+const pc=unzipSync(fs.readFileSync(`${downloadDir}/leafy-pc-bridge.zip`));
+assert(pc['leafy-pc-bridge/connect.mjs']);
+assert(pc['leafy-pc-bridge/README.md']);
+assert(!pc['leafy-pc-bridge/start.cmd'],'Windows guide must not point at the blocked start file');
+assert(!Object.keys(pc).some(name=>/\.leafy-pc-session\.json|leafy-pc\.json|(^|\/)\.env(?:\.|$)/i.test(name)),'PC credentials and local configuration must not be bundled');
+const engine=unzipSync(fs.readFileSync(`${downloadDir}/leafy-browser-engine.zip`));
+assert(engine['leafy-browser-engine/server.mjs']);
+assert(engine['leafy-browser-engine/README.md']);
+assert(!Object.keys(engine).some(name=>/(^|\/)\.env(?:\.|$)/i.test(name)),'browser engine secrets must not be bundled');
+console.log(`PASS: ${expected.length} download packages exist; Chrome extension origin, PC startup guide and browser engine contents are present.`);

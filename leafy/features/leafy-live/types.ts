@@ -1,0 +1,9 @@
+export type LiveMode='lecture'|'conversation'|'takeover';
+export type LayoutPreset='AUTO'|'DUO'|'PRESENTER'|'LEAFY'|'CONTENT'|'FULL USER'|'FULL LEAFY';
+export type BackgroundMode='standard'|'camera';
+export type Rect={x:number;y:number;w:number;h:number};
+export type LiveEntry={id:string;kind:'presenter'|'leafy'|'audience'|'content';text:string;time:number};
+export type Question={id:string;name:string;text:string;status:'queued'|'approved'|'ignored';created:number};
+export type LiveSession={id:string;viewKey:string;audienceKey:string;expires:number};
+export type Presentation={kind:'image'|'video'|'pdf'|'text'|'screen';title:string;description:string;source?:CanvasImageSource;text?:string};
+export type SceneLayout={presenter:Rect;leafy:Rect;content:Rect;question:Rect};

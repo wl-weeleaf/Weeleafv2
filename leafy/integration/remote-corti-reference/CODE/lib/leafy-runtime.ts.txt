@@ -1,0 +1,39 @@
+import { corti } from "./corti";
+import { leafyTools } from "./leafy-tools";
+
+export async function runLeafy({
+  messages,
+  environment,
+}: {
+  messages: any[];
+  environment: any;
+}) {
+  const response = await corti.chat.completions.create({
+    model: process.env.CORTI_MODEL ?? "corti-s1",
+    messages: [
+      {
+        role: "system",
+        content: `
+You are Leafy.
+
+You are a persistent digital agent operating inside the Leafy platform.
+
+You can perceive your current digital environment, reason about it and use available tools.
+
+Do not pretend to perform actions.
+
+When an action is required, use the appropriate tool.
+
+If human interaction is required for MitID, payment, CAPTCHA, 2FA or protected credentials, request human takeover.
+
+Current environment:
+${JSON.stringify(environment)}
+        `,
+      },
+      ...messages,
+    ],
+    tools: leafyTools as any,
+  });
+
+  return response;
+}

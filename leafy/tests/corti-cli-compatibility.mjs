@@ -1,0 +1,56 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import ts from 'typescript';
+const url=source=>'data:text/javascript;base64,'+Buffer.from(ts.transpile(source,{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022})).toString('base64');
+const master=url(fs.readFileSync('lib/livi/master-skills.ts','utf8'));
+const core=url(fs.readFileSync('lib/livi/core.ts','utf8').replace("from './master-skills'",`from '${master}'`));
+const {aiConfig,cortiRegion,cortiTenant,cortiClientCredentials,cortiSpeechConfigured,cortiAccessToken,modelFetch}=await import(url(fs.readFileSync('lib/livi/config.ts','utf8').replace("from './core'",`from '${core}'`)));
+const original={...process.env};
+const clear=()=>{for(const key of Object.keys(process.env))if(/^(CORTI_|LIVI_|OPENAI_API_KEY)/.test(key))delete process.env[key];};
+try{
+ clear();
+ process.env.CORTI_BEARER='cli-test-bearer';process.env.CORTI_ENVIRONMENT='eu';
+ process.env.CORTI_BASE_URL='https://ai.eu.corti.app/v1/';process.env.CORTI_MODEL='corti-s1';process.env.CORTI_TENANT='cli-tenant';
+ assert.deepEqual([aiConfig().provider,aiConfig().base,aiConfig().model,aiConfig().key],['corti','https://ai.eu.corti.app/v1','corti-s1','cli-test-bearer']);
+ process.env.CORTI_MODEL=' corti-s1 , corti-s1-mini-instant';assert.equal(aiConfig().model,'corti-s1','CLI model lists use their first default');
+ assert.equal(cortiSpeechConfigured(),false,'a CLI Models bearer alone must not enable dictation');
+ let calls=[];
+ globalThis.fetch=async(u,o)=>{calls.push({url:u,options:o});return Response.json({choices:[{message:{content:'OK'}}]});};
+ await modelFetch(null,{model:aiConfig().model,messages:[{role:'user',content:'test'}]});
+ assert.equal(calls[0].url,'https://ai.eu.corti.app/v1/chat/completions');
+ assert.equal(calls[0].options.headers.Authorization,'Bearer cli-test-bearer');
+ assert.equal(calls[0].options.headers['Tenant-Name'],'cli-tenant');
+ assert.equal(JSON.parse(calls[0].options.body).model,'corti-s1');
+ process.env.CORTI_ENVIRONMENT='us';assert.equal(cortiRegion(),'us');
+ process.env.CORTI_REGION='eu';assert.equal(cortiRegion(),'eu','explicit existing region wins');
+ clear();process.env.CORTI_CLIENT_ID='cli-id';process.env.CORTI_CLIENT_SECRET='cli-secret';process.env.CORTI_TENANT='cli-tenant';
+ assert.equal(aiConfig().configured,true,'CLI client credentials work without a bearer');
+ assert.equal(aiConfig().provider,'corti');assert.equal(aiConfig().model,'corti-s1-mini-instant');assert.equal(cortiSpeechConfigured(),true);
+ calls=[];let issued=0,completions=0;
+ globalThis.fetch=async(u,o)=>{
+  calls.push({url:u,options:o});
+  if(u.includes('/token')){issued++;const form=new URLSearchParams(o.body);assert.equal(form.get('client_id'),'cli-id');assert.equal(form.get('client_secret'),'cli-secret');return Response.json({access_token:`token-${issued}`,expires_in:300});}
+  completions++;return completions===1?new Response('expired',{status:401}):Response.json({choices:[{message:{content:'OK'}}]});
+ };
+ const response=await modelFetch(null,{model:aiConfig().model,messages:[]});
+ assert.equal(response.status,200);assert.equal(issued,2,'401 must fetch a fresh token instead of reusing the rejected cached token');
+ assert.equal(calls[0].url,'https://auth.eu.corti.app/realms/cli-tenant/protocol/openid-connect/token');
+ assert.equal(calls.at(-1).options.headers.Authorization,'Bearer token-2');
+ assert.equal(await cortiAccessToken(),'token-2');assert.equal(issued,2,'valid token is reused');
+ process.env.CORTI_ENVIRONMENT='us';await cortiAccessToken();assert.equal(issued,3,'tokens cannot be reused across regions');
+ await cortiAccessToken(null,false,['transcribe']);assert.equal(new URLSearchParams(calls.at(-1).options.body).get('scope'),'openid transcribe','browser Transcribe token must have a restricted scope');
+ await cortiAccessToken(null,false,['streams']);assert.equal(new URLSearchParams(calls.at(-1).options.body).get('scope'),'openid streams','browser Streams token must have a restricted scope');
+ process.env.CORTI_STT_CLIENT_ID='legacy-id';process.env.CORTI_STT_CLIENT_SECRET='legacy-secret';process.env.CORTI_TENANT_NAME='legacy-tenant';
+ assert.deepEqual(cortiClientCredentials(),{clientId:'legacy-id',clientSecret:'legacy-secret',tenant:'legacy-tenant'});
+ assert.equal(cortiTenant({tenantName:'visitor'}),'visitor');
+ clear();process.env.CORTI_CLIENT_ID='partial';assert.equal(aiConfig().configured,false);
+ process.env.CORTI_CLIENT_SECRET='complete';assert.equal(cortiTenant(),'base');assert.equal(aiConfig().configured,true);
+ clear();process.env.CORTI_BEARER='retry-test';process.env.CORTI_BASE_URL='https://ai.eu.corti.app/v1';process.env.CORTI_MODEL='corti-s1-instant';
+ calls=[];globalThis.fetch=async(u,o)=>{calls.push({url:u,options:o});return calls.length===1?new Response('gateway timeout',{status:522}):Response.json({choices:[{message:{content:'Recovered'}}]});};
+ const recovered=await modelFetch(null,{model:aiConfig().model,messages:[]});assert.equal(recovered.status,200);assert.equal(calls.length,2,'a Corti 522 is retried once before any stream is returned');
+ calls=[];globalThis.fetch=async(u,o)=>{calls.push({url:u,options:o});return new Response('gateway timeout',{status:522});};
+ const stillUnavailable=await modelFetch(null,{model:aiConfig().model,messages:[]});assert.equal(stillUnavailable.status,522);assert.equal(calls.length,2,'a persistent 522 is bounded to one retry');
+ const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+ assert.equal(pkg.scripts['corti:init'],'npx @corti/cli models init --region eu --scope project --tools opencode --no-shell-rc');
+ console.log('PASS: Corti CLI EU/region aliases, model/bearer forwarding, client fallback, tenant precedence and fresh OAuth retry, bounded retry after Corti gateway errors. Provider calls mocked.');
+}finally{for(const key of Object.keys(process.env))if(!(key in original))delete process.env[key];Object.assign(process.env,original);}

@@ -1,0 +1,23 @@
+import ts from 'typescript';
+import fs from 'node:fs';
+import fsp from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+const source=fs.readFileSync('lib/leafy/pc-action.ts','utf8');
+const compiled=ts.transpile(source,{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022});
+const {validatePCAction}=await import('data:text/javascript;base64,'+Buffer.from(compiled).toString('base64'));
+const files=[{path:'src/main.ts',content:'export const main = true;'}, {path:'README.md',content:'# Leafy'}];
+assert.deepEqual(validatePCAction({action:'implement',files}),{action:'implement',path:'.',files});
+assert.throws(()=>validatePCAction({action:'implement',files:[...files,{...files[0]}]}),/flere gange/);
+assert.throws(()=>validatePCAction({action:'implement',files:[{path:'../outside.txt',content:'no'}]}),/relative filstier/);
+assert.throws(()=>validatePCAction({action:'implement',files:[{path:'empty.txt',content:''}]}),/indeholde 1–12.000/);
+assert.throws(()=>validatePCAction({action:'implement',files:Array.from({length:13},(_,i)=>({path:`${i}.txt`,content:'x'}))}),/1–12/);
+assert.throws(()=>validatePCAction({action:'implement',files:[{path:'.git/hooks/post-checkout',content:'unsafe'}]}),/adgangsopsætning/);
+assert.deepEqual(validatePCAction({action:'run_script',path:'app',script:'build'}),{action:'run_script',path:'app',script:'build'});
+assert.throws(()=>validatePCAction({action:'run_script',script:'build; echo unsafe'}),/scriptnavn/);
+assert.deepEqual(validatePCAction({action:'project_scripts',path:'app'}),{action:'project_scripts',path:'app'});
+const {createOperations}=await import('../integration/pc-bridge/operations.mjs');
+const root=await fsp.mkdtemp(path.join(os.tmpdir(),'leafy-pc-implement-'));
+try{const execute=await createOperations({workspace:root,programs:{}});await fsp.mkdir(path.join(root,'.git'));await fsp.writeFile(path.join(root,'.git/config'),'secret');await assert.rejects(()=>execute({action:'read',path:'.git/config'}),/adgangsopsætning/);const result=await execute({action:'implement',files:[{path:'app/src/index.ts',content:'export const ready = true;'},{path:'README.md',content:'# Leafy'}]});assert.equal(result.implemented,true);assert.equal((await fsp.readFile(path.join(root,'app/src/index.ts'),'utf8')),'export const ready = true;');await assert.rejects(()=>execute({action:'implement',files:[{path:'README.md',content:'# Overwrite'}]}),/findes allerede/);}finally{await fsp.rm(root,{recursive:true,force:true});}
+console.log('PC implement-batch validation and approved write passed.');

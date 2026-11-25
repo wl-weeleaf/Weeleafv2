@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {directScene,easeLayout,wakeCommand} from '../features/leafy-live/services/sceneDirector.mjs';
+const presets=['AUTO','DUO','PRESENTER','LEAFY','CONTENT','FULL USER','FULL LEAFY'];
+const visible=r=>r.w>.001&&r.h>.001;
+const overlap=(a,b)=>visible(a)&&visible(b)&&a.x<b.x+b.w-1e-8&&a.x+a.w>b.x+1e-8&&a.y<b.y+b.h-1e-8&&a.y+a.h>b.y+1e-8;
+function safe(scene){const entries=Object.entries(scene);for(const [key,r]of entries){assert.ok(r.w>=0&&r.h>=0,key);if(!visible(r))continue;assert.ok(r.x>=-1e-8&&r.y>=-1e-8&&r.x+r.w<=1.00001&&r.y+r.h<=1.00001,`${key} outside stage ${JSON.stringify(r)}`);}for(let i=0;i<entries.length;i++)for(let j=i+1;j<entries.length;j++)assert.equal(overlap(entries[i][1],entries[j][1]),false,`${entries[i][0]} overlaps ${entries[j][0]}`);}
+test('Every preset keeps presenter, Leafy, content and approved question apart',()=>{for(const preset of presets)for(const presenterVisible of [true,false])for(const activeContent of [true,false])for(const audienceQuestion of [true,false])for(const mode of ['lecture','conversation','takeover'])safe(directScene({preset,presenterVisible,activeContent,audienceQuestion,mode}));});
+test('Smooth transitions preserve safe content and question regions',()=>{for(const from of presets)for(const to of presets){let layout=directScene({preset:from,activeContent:true});const target=directScene({preset:to,activeContent:true,audienceQuestion:true});for(let n=0;n<180;n++){layout=easeLayout(layout,target,1/30);safe(layout);}}});
+test('AUTO gives content room and expands Leafy during takeover',()=>{const duo=directScene(),content=directScene({activeContent:true}),takeover=directScene({mode:'takeover'});assert.ok(content.content.w>.5);assert.ok(content.presenter.w<duo.presenter.w);assert.ok(takeover.leafy.w>duo.leafy.w);});
+test('Wake phrases allow natural Danish punctuation, but not ambient name mentions',()=>{assert.equal(wakeCommand('Hej Leafy, forklar forskellen.'),'forklar forskellen.');assert.equal(wakeCommand('Hey Leafy! Vis dem Hive.'),'Vis dem Hive.');assert.equal(wakeCommand('Leafy, hvad spurgte de om før?'),'hvad spurgte de om før?');assert.equal(wakeCommand('Hej Leafy'),'');assert.equal(wakeCommand('Jeg arbejder sammen med Leafy i dag.'),null);assert.equal(wakeCommand('Leafyland er grøn'),null);});

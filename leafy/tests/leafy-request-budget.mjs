@@ -1,0 +1,9 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import ts from 'typescript';
+const {fitRequest}=await import('data:text/javascript;base64,'+Buffer.from(ts.transpile(fs.readFileSync('lib/leafy/request-budget.ts','utf8'),{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022})).toString('base64'));
+test('Budget bounds actual serialized UTF-8, preserves system, original inputs and live tool arguments',()=>{
+ const system={role:'system',content:'Kerneidentitet og alle godkendelsesregler.'};const task={role:'user',content:'Forklar økologisk økonomi'};const call={role:'assistant',content:null,tool_calls:[{id:'t',function:{name:'read_page',arguments:'{"url":"https://example.com"}'}}]};const payload={messages:[system,{role:'user',content:'AKTUELT MILJØ '+('🌿\\"\n'.repeat(15000))},{role:'user',content:'VEDHÆFTNINGER '+('Fil-id abc. '.repeat(9000))},task,call,{role:'tool',tool_call_id:'t',content:'Sideindhold '.repeat(15000)}],tools:[{name:'read_page'}]};const saved=JSON.stringify(payload),result=fitRequest(payload);
+ assert(Buffer.byteLength(JSON.stringify(result))<=48000);assert.deepEqual(result.messages[0],system);assert(result.messages.some(m=>m.content===task.content));assert.deepEqual(result.messages.find(m=>m.tool_calls),call);assert.equal(result.messages.at(-1).tool_call_id,'t');assert.match(result.messages.at(-1).content,/Uddrag/);assert.equal(JSON.stringify(payload),saved);
+});
+test('Oversized task is explicitly excerpted, with source retrieval and preserved start/end',()=>{
+ const text='START '+('🌿'.repeat(20000))+' SLUT';const result=fitRequest({messages:[{role:'system',content:'regler'},{role:'user',content:text}]});assert(Buffer.byteLength(JSON.stringify(result))<=48000);assert(result.messages.at(-1).content.startsWith('START'));assert(result.messages.at(-1).content.endsWith('SLUT'));assert.match(result.messages.at(-1).content,/read_leafy_context/);
+});

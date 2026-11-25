@@ -1,0 +1,19 @@
+{
+  "environment": {
+    "type": "leafy-platform",
+    "page": "/hive",
+    "visibleElements": [
+      {
+        "id": "energy-card",
+        "type": "card",
+        "text": "Energi"
+      },
+      {
+        "id": "simulation-button",
+        "type": "button",
+        "text": "Åbn simulation"
+      }
+    ],
+    "remoteSession": null
+  }
+}

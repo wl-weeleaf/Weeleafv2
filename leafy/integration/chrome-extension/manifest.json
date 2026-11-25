@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Leafy · Browser",
+  "version": "0.3.0",
+  "minimum_chrome_version": "120",
+  "description": "Leafys browservisning i appen: automatisk cookiehåndtering og navigation på kommando.",
+  "permissions": [
+    "debugger",
+    "scripting",
+    "tabs",
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://leafy-0-1-live.bushy-flame-4467.chatgpt.site/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Leafy · Browser"
+  }
+}

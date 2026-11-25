@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {webcrypto} from 'node:crypto';
+import ts from 'typescript';
+
+globalThis.btoa=(value)=>Buffer.from(value,'binary').toString('base64');
+globalThis.atob=(value)=>Buffer.from(value,'base64').toString('binary');
+process.env.LEAFY_CREDENTIALS_ENCRYPTION_KEY='0123456789abcdef'.repeat(4);
+const source=await readFile(new URL('../lib/livi/credentials.ts',import.meta.url),'utf8');
+const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText;
+const vault=await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
+const secrets={modelsApiKey:'corti-models-test',sttClientId:'client-id',sttClientSecret:'private-client-secret',tenantName:'tenant-eu'};
+const encrypted=await vault.encryptCortiCredentials(secrets);
+assert(!encrypted.includes('private-client-secret'));
+const request=new Request('https://leafy.test/api/livi/status',{headers:{cookie:`leafy_corti=${encrypted}`}});
+assert.deepEqual(await vault.decryptCortiCredentials(request),secrets);
+const tampered=`${encrypted[0]==='a'?'b':'a'}${encrypted.slice(1)}`;
+assert.equal(await vault.decryptCortiCredentials(new Request('https://leafy.test',{headers:{cookie:`leafy_corti=${tampered}`}})),null);
+assert.equal(await vault.decryptCortiCredentials(new Request('https://leafy.test')),null);
+assert.match(vault.cortiCookie(encrypted),/HttpOnly; Secure; SameSite=Strict/);
+console.log('PASS: Corti credentials are AES-GCM encrypted, tamper rejected, absent cookie handled, and stored in a strict HttpOnly cookie.');
