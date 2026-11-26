@@ -4,8 +4,8 @@
 // (token included), the browser streams microphone audio (webm/opus) to Corti's
 // /transcribe endpoint and receives transcript messages back.
 //
-// When Corti is not configured, the app falls back to the browser's built-in
-// Danish speech recognition and a local field heuristic, so it can be demoed.
+// Speech only ever goes to Corti. Without Corti, transcription is unavailable and
+// field suggestions use a local rule set.
 
 import { GERNINGSKODER } from './caseData'
 
@@ -120,36 +120,12 @@ export async function startCorti({ mode, onPartial, onFinal, onCommand, onError,
   return stopAll
 }
 
-// ── Fallback: browser speech recognition (Chrome/Edge, da-DK) ──
-export function startBrowser({ onPartial, onFinal, onError, onState }) {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-  if (!SR) throw new Error('Corti er ikke sat op, og browseren understøtter ikke talegenkendelse.')
-  const rec = new SR()
-  rec.lang = 'da-DK'
-  rec.continuous = true
-  rec.interimResults = true
-  let active = true
-  rec.onresult = (e) => {
-    let partial = ''
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const r = e.results[i]
-      if (r.isFinal) onFinal(r[0].transcript.trim())
-      else partial += r[0].transcript
-    }
-    onPartial(partial)
-  }
-  rec.onerror = (e) => !['no-speech', 'aborted'].includes(e.error) && onError(new Error(`Talegenkendelse: ${e.error}`))
-  rec.onend = () => active && rec.start()
-  rec.start()
-  onState?.('live')
-  return () => { active = false; rec.stop(); onPartial(''); onState?.('stopped') }
-}
-
 // ── AI helper ──
-export async function assist(text, useCorti) {
+// Without Corti the suggestions are made locally (simple rules, nothing leaves the machine).
+export async function assist(text, useCorti, navne = []) {
   if (!useCorti) return heuristic(text)
-  const koder = GERNINGSKODER.map((g) => `${g.kode} (${g.tekst})`).join(', ')
-  return api('/api/assist', { text, koder })
+  const koder = GERNINGSKODER.map(({ kode, tekst }) => ({ kode, tekst }))
+  return api('/api/assist', { text, koder, navne })
 }
 
 function heuristic(text) {

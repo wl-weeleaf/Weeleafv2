@@ -8,5 +8,17 @@ export default defineConfig({
   server: {
     port: 5180,
     proxy: { '/api': 'http://localhost:8787' },
+    // The browser may only talk to this app and to Corti's speech service.
+    headers: {
+      'Content-Security-Policy': [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'", // inline needed by the dev server only
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        "font-src 'self' data:",
+        "connect-src 'self' ws://localhost:5180 wss://*.corti.app",
+        "frame-ancestors 'none'",
+      ].join('; '),
+    },
   },
 })

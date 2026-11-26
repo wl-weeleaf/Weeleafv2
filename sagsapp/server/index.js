@@ -14,11 +14,16 @@ import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { CortiClient } from '@corti/sdk'
+import { redact, restore, validate, lockEgress, audit } from './guard.js'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 loadEnv(path.join(root, '.env'))
 
 const PORT = process.env.PORT || 8787
+// Only Corti may be reached from this server (plus hosts you list, e.g. an on-prem Corti).
+lockEgress((process.env.ALLOWED_HOSTS || '').split(',').map((h) => h.trim()).filter(Boolean))
+// Browser origins allowed to call the API (blocks other web pages from using localhost).
+const ALLOWED_ORIGINS = new Set(['http://localhost:5180', 'http://127.0.0.1:5180', `http://localhost:${PORT}`])
 const ENV_FILE = path.join(root, '.env')
 const KEYS = ['CORTI_ENVIRONMENT', 'CORTI_TENANT_NAME', 'CORTI_CLIENT_ID', 'CORTI_CLIENT_SECRET', 'CORTI_AGENT_ID', 'CORTI_LANGUAGE']
 
@@ -134,20 +139,29 @@ function textFrom(resp) {
   return ''
 }
 
-async function assist(text, koder) {
+async function assist(text, koder, names) {
+  const codes = koder.map((k) => String(k.kode))
+  const { text: neutral, map, counts } = redact(text, names)
+  audit(root, { action: 'assist', chars: neutral.length, redacted: counts })
   const id = await ensureAgent()
   const resp = await corti.agents.messageSend(id, {
     message: {
       role: 'user',
       kind: 'message',
       messageId: randomUUID(),
-      parts: [{ kind: 'text', text: `Kodeliste: ${koder}\n\nTekst:\n${text}` }],
+      parts: [{ kind: 'text', text: `Kodeliste: ${koder.map((k) => `${k.kode} (${k.tekst})`).join(', ')}\n\nTekst:\n${neutral}` }],
     },
   })
   const raw = textFrom(resp)
   const json = raw.match(/\{[\s\S]*\}/)
-  if (!json) throw new Error('Corti-agenten returnerede ikke JSON: ' + raw.slice(0, 200))
-  return JSON.parse(json[0])
+  if (!json) throw new Error('Corti-agenten returnerede ikke et gyldigt svar.')
+  let parsed
+  try { parsed = JSON.parse(json[0]) } catch { throw new Error('Corti-agenten returnerede ikke et gyldigt svar.') }
+  const safe = validate(parsed, codes)
+  // Put real values back locally; Corti only ever saw placeholders.
+  for (const k of Object.keys(safe)) safe[k] = restore(safe[k], map)
+  safe._redacted = counts
+  return safe
 }
 
 // ── HTTP ──
@@ -156,6 +170,7 @@ const routes = {
 
   'GET /api/corti/transcribe': async () => {
     const token = await accessToken()
+    audit(root, { action: 'transcribe-start' })
     const q = new URLSearchParams({ 'tenant-name': CORTI_TENANT_NAME, token: `Bearer ${token}` })
     return {
       url: `wss://api.${CORTI_ENVIRONMENT}.corti.app/audio-bridge/v2/transcribe?${q}`,
@@ -196,13 +211,16 @@ const routes = {
 
   'POST /api/assist': async (body) => {
     if (!body?.text?.trim()) throw new Error('Ingen tekst')
-    return assist(body.text, body.koder || '')
+    if (body.text.length > 20000) throw new Error('Teksten er for lang')
+    return assist(body.text, Array.isArray(body.koder) ? body.koder : [], Array.isArray(body.navne) ? body.navne : [])
   },
 }
 
 http
   .createServer(async (req, res) => {
     const key = `${req.method} ${req.url.split('?')[0]}`
+    const origin = req.headers.origin
+    if (origin && !ALLOWED_ORIGINS.has(origin)) return send(res, 403, { error: 'Ukendt oprindelse' })
     const handler = routes[key]
     if (!handler) return send(res, 404, { error: 'Ikke fundet' })
     if (!key.startsWith('GET /api/status') && !key.includes('/api/settings') && !configured) {
@@ -213,7 +231,7 @@ http
       send(res, 200, await handler(body))
     } catch (err) {
       console.error(err)
-      send(res, 500, { error: err.message })
+      send(res, 500, { error: err.message.replace(/Bearer\s+\S+/g, 'Bearer ***') })
     }
   })
   .listen(PORT, '127.0.0.1', () => {
@@ -221,7 +239,7 @@ http
   })
 
 function send(res, status, data) {
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' })
   res.end(JSON.stringify(data))
 }
 

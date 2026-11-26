@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { SAGER, GERNINGSKODER, STATUS } from './caseData'
-import { cortiStatus, startCorti, startBrowser, assist, getSettings, saveSettings, testSettings } from './corti'
+import { cortiStatus, startCorti, assist, getSettings, saveSettings, testSettings } from './corti'
 
 const FELTER = [
   { key: 'gerningskode', label: 'Gerningskode' },
@@ -121,8 +121,12 @@ export default function SagApp() {
         onError: (e) => setFejl(e.message),
         onState: (st) => st === 'stopped' && setRecording(false),
       }
+      if (!status.corti) {
+        setSettingsOpen(true)
+        throw new Error('Tale kræver Corti. Forbind Corti først.')
+      }
       setRecording(true)
-      stopRef.current = status.corti ? await startCorti(opts) : startBrowser(opts)
+      stopRef.current = await startCorti(opts)
     } catch (e) {
       setRecording(false)
       setFejl(e.message)
@@ -137,7 +141,7 @@ export default function SagApp() {
     setBusy(true)
     setFejl('')
     try {
-      setForslag(await assist(tekst, status.corti))
+      setForslag(await assist(tekst, status.corti, sag.personer || []))
     } catch (e) {
       setFejl(e.message)
     } finally {
@@ -332,7 +336,7 @@ export default function SagApp() {
               <span className="muted"> · Ctrl D</span>
             </div>
             <div className="muted center small">
-              {status.corti ? 'Corti live-transskription' : 'Demo: browserens talegenkendelse'}
+              {status.corti ? 'Corti live-transskription' : 'Tale kræver Corti-forbindelse'}
               {mode === 'diktat' && status.corti && <><br />"punktum" · "ny linje" · "slet det sidste" · "stop diktat"</>}
             </div>
 
@@ -357,7 +361,14 @@ export default function SagApp() {
             {fejl && <div className="error">{fejl}</div>}
             {forslag && (
               <div className="suggest">
-                {forslag._offline && <div className="muted small">Demo-forslag uden AI – forbind Corti for rigtige forslag.</div>}
+                {forslag._offline && <div className="muted small">Lokale forslag uden AI – intet har forladt maskinen.</div>}
+                {forslag._redacted && (
+                  <div className="muted small">
+                    {Object.keys(forslag._redacted).length
+                      ? 'Anonymiseret før afsendelse: ' + Object.entries(forslag._redacted).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(', ')
+                      : 'Ingen personoplysninger fundet i teksten.'}
+                  </div>
+                )}
                 {forslagFelter.map(({ key, label }) => (
                   <div key={key} className="sug">
                     <div>
