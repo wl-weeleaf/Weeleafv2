@@ -168,3 +168,8 @@ function heuristic(text) {
   out.resume = text.split(/(?<=\.)\s/).slice(0, 2).join(' ')
   return out
 }
+
+// ── Settings (stored in sagsapp/.env by the local server) ──
+export const getSettings = () => api('/api/settings')
+export const saveSettings = (s) => api('/api/settings', s)
+export const testSettings = () => api('/api/settings/test', {})

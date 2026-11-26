@@ -20,7 +20,8 @@ Uden en udfyldt `.env` kører appen i demo-tilstand. Så bruger den browserens e
 
 ## Corti-opsætning
 
-Opret en API-klient i Corti Console (https://console.corti.app) og udfyld `.env`:
+Tryk på **Forbind Corti** øverst til højre, udfyld felterne og tryk **Gem og test forbindelse**.
+Værdierne gemmes i `sagsapp/.env`, og du kan også redigere filen direkte:
 
 | Variabel | Beskrivelse |
 |---|---|
@@ -31,6 +32,10 @@ Opret en API-klient i Corti Console (https://console.corti.app) og udfyld `.env`
 | `CORTI_LANGUAGE` | Sprogkode til transskription (`da`) |
 
 Tjek, at dansk er understøttet for jeres tenant: http://localhost:5180/api/corti/languages
+
+## Baggrundsbillede
+
+Læg et foto som `public/bg.jpg` (fx natur eller sten), så ligger det sløret bag glaspanelerne. Uden et foto bruges en lys, organisk baggrund.
 
 ## Opbygning
 
