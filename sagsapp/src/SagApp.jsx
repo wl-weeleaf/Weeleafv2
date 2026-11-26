@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { SAGER, GERNINGSKODER, STATUS } from './caseData'
-import { ENGINES, startTranscription, browserSupported } from './speech'
-import { extractFields } from './ai'
+import { cortiStatus, startCorti, startBrowser, assist } from './corti'
 
 const FELTER = [
   { key: 'gerningskode', label: 'Gerningskode' },
@@ -25,8 +24,7 @@ export default function SagApp() {
   const [sager, setSager] = useState(SAGER)
   const [aktivId, setAktivId] = useState(SAGER[0].id)
   const [filter, setFilter] = useState('')
-  const [apiKey, setApiKey] = useState('')
-  const [engine, setEngine] = useState(browserSupported() ? 'browser' : 'openai')
+  const [status, setStatus] = useState({ corti: false, loading: true })
   const [mode, setMode] = useState('afhoering') // 'afhoering' | 'diktat'
   const [recording, setRecording] = useState(false)
   const [partial, setPartial] = useState('')
@@ -36,6 +34,7 @@ export default function SagApp() {
   const [fejl, setFejl] = useState('')
   const [palette, setPalette] = useState(false)
   const stopRef = useRef(null)
+  useEffect(() => { cortiStatus().then(setStatus) }, [])
   const modeRef = useRef(mode)
   modeRef.current = mode
 
@@ -68,6 +67,22 @@ export default function SagApp() {
     [aktivId]
   )
 
+  // Spoken dictation commands from Corti.
+  const onCommand = useCallback(
+    (id) => {
+      setSager((all) =>
+        all.map((s) => {
+          if (s.id !== aktivId) return s
+          if (id === 'ny_linje') return { ...s, resume: s.resume + '\n' }
+          if (id === 'nyt_afsnit') return { ...s, resume: s.resume + '\n\n' }
+          if (id === 'slet_sidste') return { ...s, resume: s.resume.replace(/\s*[^.!?\n]*[.!?]?\s*$/, '') }
+          return s
+        })
+      )
+    },
+    [aktivId]
+  )
+
   async function toggleRec() {
     if (recording) {
       stopRef.current?.()
@@ -77,14 +92,18 @@ export default function SagApp() {
     }
     setFejl('')
     try {
-      stopRef.current = await startTranscription(engine, {
-        apiKey,
+      const opts = {
+        mode,
         onPartial: setPartial,
         onFinal,
+        onCommand,
         onError: (e) => setFejl(e.message),
-      })
+        onState: (st) => st === 'stopped' && setRecording(false),
+      }
       setRecording(true)
+      stopRef.current = status.corti ? await startCorti(opts) : startBrowser(opts)
     } catch (e) {
+      setRecording(false)
       setFejl(e.message)
     }
   }
@@ -97,7 +116,7 @@ export default function SagApp() {
     setBusy(true)
     setFejl('')
     try {
-      setForslag(await extractFields(tekst, apiKey))
+      setForslag(await assist(tekst, status.corti))
     } catch (e) {
       setFejl(e.message)
     } finally {
@@ -137,22 +156,16 @@ export default function SagApp() {
     <div className="sag-app">
       <header className="topbar">
         <div className="brand">
-          <img src="/leafy.gif" alt="" width="28" height="28" />
+          <span className="logo">S</span>
           <span>Sagsarbejdsplads</span>
           <span className="pill muted">Prototype · lag over PolSas</span>
         </div>
         <button className="search-btn" onClick={() => setPalette(true)}>
           Søg sag, person, kode… <kbd>⌘K</kbd>
         </button>
-        <div className="key-box">
-          <input
-            type="password"
-            placeholder="OpenAI-nøgle (som Leafy)"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            title="Holdes kun i hukommelsen, gemmes aldrig"
-          />
-          <span className={'dot ' + (apiKey ? 'on' : '')} />
+        <div className="status" title={status.corti ? `Corti ${status.environment}, sprog ${status.language}` : 'Udfyld .env for at slå Corti til'}>
+          <span className={'dot ' + (status.corti ? 'on' : '')} />
+          {status.loading ? 'Forbinder…' : status.corti ? 'Corti forbundet' : 'Demo-tilstand (uden Corti)'}
         </div>
       </header>
 
@@ -253,11 +266,10 @@ export default function SagApp() {
               <button className={mode === 'afhoering' ? 'on' : ''} onClick={() => setMode('afhoering')}>Afhøring</button>
               <button className={mode === 'diktat' ? 'on' : ''} onClick={() => setMode('diktat')}>Diktat → resumé</button>
             </div>
-            <select value={engine} onChange={(e) => setEngine(e.target.value)} disabled={recording}>
-              {Object.entries(ENGINES).map(([k, v]) => (
-                <option key={k} value={k} disabled={v.disabled}>{v.label}</option>
-              ))}
-            </select>
+            <div className="meta">
+              Motor: {status.corti ? 'Corti live-transskription' : 'Browserens talegenkendelse (demo)'}
+              {mode === 'diktat' && status.corti && <> · sig "punktum", "ny linje", "slet det sidste", "stop diktat"</>}
+            </div>
             <button className={'rec ' + (recording ? 'on' : '')} onClick={toggleRec}>
               {recording ? '■ Stop' : '● Start'} <kbd>⌘D</kbd>
             </button>
@@ -274,14 +286,14 @@ export default function SagApp() {
           </div>
 
           <div className="card">
-            <h3>Leafy-assistent</h3>
+            <h3>AI-assistent {status.corti && <span className="pill">Corti</span>}</h3>
             <button className="primary" disabled={busy} onClick={analyser}>
               {busy ? 'Analyserer…' : 'Foreslå felter ud fra tekst'}
             </button>
             {fejl && <div className="error">{fejl}</div>}
             {forslag && (
               <div className="suggest">
-                {forslag._offline && <div className="meta">Offline-forslag (ingen nøgle). Tilføj nøgle for AI.</div>}
+                {forslag._offline && <div className="meta">Demo-forslag uden AI. Sæt Corti op i .env for rigtige forslag.</div>}
                 {FELTER.filter(({ key }) => forslag[key] && forslag[key] !== sag[key]).map(({ key, label }) => (
                   <div key={key} className="sug-row">
                     <div>
