@@ -14,6 +14,25 @@ const FELTER = [
 
 const kodeTekst = (k) => GERNINGSKODER.find((g) => g.kode === k)?.tekst
 
+export const THEMES = [
+  { id: 'nat', navn: 'Nat', farver: ['#0f2a4e', '#3b7be6'] },
+  { id: 'skov', navn: 'Skov', farver: ['#e9e4d8', '#4f7f5d'] },
+  { id: 'fjord', navn: 'Fjord', farver: ['#0f3033', '#2fa39a'] },
+  { id: 'sten', navn: 'Sten', farver: ['#e4e7ea', '#34506f'] },
+  { id: 'sand', navn: 'Sand', farver: ['#f1e7d8', '#b5643c'] },
+]
+
+function useTheme() {
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('sag-theme') || 'nat' } catch { return 'nat' }
+  })
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    try { localStorage.setItem('sag-theme', theme) } catch { /* private mode */ }
+  }, [theme])
+  return [theme, setTheme]
+}
+
 function now() {
   const d = new Date()
   const p = (n) => String(n).padStart(2, '0')
@@ -34,6 +53,7 @@ export default function SagApp() {
   const [fejl, setFejl] = useState('')
   const [palette, setPalette] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [theme, setTheme] = useTheme()
   const stopRef = useRef(null)
   const modeRef = useRef(mode)
   modeRef.current = mode
@@ -154,10 +174,10 @@ export default function SagApp() {
 
       <header className="topbar glass">
         <div className="brand">
-          <span className="mark" />
+          <img className="logo" src="/logo.png" alt="Politi" onError={(e) => { e.currentTarget.style.display = 'none' }} />
           <div>
             <div className="brand-name">Sagsarbejdsplads</div>
-            <div className="brand-sub">Lag over PolSas · prototype</div>
+            <div className="brand-sub">Prototype · ikke et officielt system</div>
           </div>
         </div>
         <button className="search" onClick={() => setPalette(true)}>
@@ -165,6 +185,18 @@ export default function SagApp() {
           <span>Søg sag, adresse eller gerningskode</span>
           <kbd>Ctrl K</kbd>
         </button>
+        <div className="themes" role="radiogroup" aria-label="Farvetema">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              className={'swatch ' + (theme === t.id ? 'on' : '')}
+              title={t.navn}
+              aria-label={t.navn}
+              onClick={() => setTheme(t.id)}
+              style={{ background: `linear-gradient(135deg, ${t.farver[0]} 50%, ${t.farver[1]} 50%)` }}
+            />
+          ))}
+        </div>
         <button className={'conn ' + (status.corti ? 'on' : '')} onClick={() => setSettingsOpen(true)}>
           <span className="conn-dot" />
           {status.loading ? 'Forbinder…' : status.corti ? 'Corti forbundet' : 'Forbind Corti'}
@@ -516,6 +548,7 @@ function Backdrop() {
     <div className="backdrop" aria-hidden>
       <div className="bg-photo" />
       <div className="bg-light" />
+      <div className="stripes" />
       <span className="blob a" />
       <span className="blob b" />
       <span className="blob c" />
